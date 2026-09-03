@@ -1,0 +1,93 @@
+{
+  "merchant_id": "merchant_c",
+  "name": "FastFeet",
+  "currency": "INR",
+  "products": [
+    {
+      "product_id": "adidas-runfalcon-3",
+      "brand": "Adidas",
+      "name": "Runfalcon 3",
+      "category": "running",
+      "variants": [
+        {
+          "color": "blue",
+          "size": 10,
+          "price": 5099,
+          "stock": 7
+        },
+        {
+          "color": "black",
+          "size": 10,
+          "price": 4999,
+          "stock": 6
+        }
+      ],
+      "discount": {
+        "type": "negotiable",
+        "max_amount": 450,
+        "minimum_price": 4650,
+        "eligible_if": "stock_above_5"
+      },
+      "delivery": {
+        "standard_days": 3,
+        "express_days": 1,
+        "express_fee": 0
+      }
+    },
+    {
+      "product_id": "nike-revolution-7",
+      "brand": "Nike",
+      "name": "Revolution 7",
+      "category": "running",
+      "variants": [
+        {
+          "color": "blue",
+          "size": 10,
+          "price": 4699,
+          "stock": 6
+        },
+        {
+          "color": "black",
+          "size": 10,
+          "price": 4599,
+          "stock": 8
+        }
+      ],
+      "discount": {
+        "type": "negotiable",
+        "max_amount": 300,
+        "minimum_price": 4300,
+        "eligible_if": "stock_above_4"
+      },
+      "delivery": {
+        "standard_days": 3,
+        "express_days": 1,
+        "express_fee": 0
+      }
+    },
+    {
+      "product_id": "puma-smash-v2",
+      "brand": "Puma",
+      "name": "Smash v2",
+      "category": "casual",
+      "variants": [
+        {
+          "color": "white",
+          "size": 10,
+          "price": 3499,
+          "stock": 10
+        }
+      ],
+      "discount": {
+        "type": "flat",
+        "amount": 300,
+        "eligible_if": "stock_above_5"
+      },
+      "delivery": {
+        "standard_days": 2,
+        "express_days": 1,
+        "express_fee": 0
+      }
+    }
+  ]
+}

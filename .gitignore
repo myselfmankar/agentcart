@@ -1,0 +1,10 @@
+﻿ap2_a2a_sample_code
+.env
+.venv
+.logs
+.temp-db
+*.egg-info
+__pycache__
+*.pyc
+
+secrets.txt
