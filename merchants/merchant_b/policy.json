@@ -1,0 +1,47 @@
+{
+  "merchant_id": "merchant_b",
+  "name": "ShoeKart",
+  "business_objective": "Clearance and value footwear outlet; low inventory; tight margins with no negotiation authority.",
+  "pricing_policy": {
+    "target_margin_pct": 10,
+    "currency": "INR"
+  },
+  "discount_policy": {
+    "adidas-runfalcon-3": {
+      "type": "flat",
+      "amount": 250,
+      "eligible_if": "stock_above_2"
+    },
+    "nike-revolution-7": {
+      "type": "flat",
+      "amount": 300,
+      "eligible_if": "stock_above_4"
+    },
+    "puma-smash-v2": {
+      "type": "percentage",
+      "amount": 5,
+      "eligible_if": "any"
+    }
+  },
+  "negotiation_policy": {
+    "allows_negotiation": false,
+    "rationale": "Clearance pricing already at lowest allowable margins; negotiation prohibited by policy."
+  },
+  "fulfillment_policy": {
+    "default": {
+      "standard_days": 6,
+      "express_days": 3,
+      "express_fee": 199
+    },
+    "nike-revolution-7": {
+      "standard_days": 7,
+      "express_days": 3,
+      "express_fee": 149
+    },
+    "puma-smash-v2": {
+      "standard_days": 5,
+      "express_days": 2,
+      "express_fee": 99
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "merchant_id": "merchant_a",
+  "name": "UrbanKicks",
+  "business_objective": "Maximize conversion with volume discounts; moderate margin protection with reliable 4-day delivery.",
+  "pricing_policy": {
+    "target_margin_pct": 20,
+    "currency": "INR"
+  },
+  "discount_policy": {
+    "adidas-runfalcon-3": {
+      "type": "flat",
+      "amount": 400,
+      "eligible_if": "stock_above_3"
+    },
+    "nike-revolution-7": {
+      "type": "percentage",
+      "amount": 10,
+      "eligible_if": "stock_above_5"
+    },
+    "puma-smash-v2": {
+      "type": "flat",
+      "amount": 200,
+      "eligible_if": "any"
+    }
+  },
+  "negotiation_policy": {
+    "allows_negotiation": false,
+    "rationale": "UrbanKicks operates on fixed volume discount tiers and does not accept counter-offers."
+  },
+  "fulfillment_policy": {
+    "default": {
+      "standard_days": 4,
+      "express_days": 2,
+      "express_fee": 149
+    },
+    "nike-revolution-7": {
+      "standard_days": 5,
+      "express_days": 2,
+      "express_fee": 99
+    },
+    "puma-smash-v2": {
+      "standard_days": 4,
+      "express_days": 2,
+      "express_fee": 99
+    }
+  }
+}

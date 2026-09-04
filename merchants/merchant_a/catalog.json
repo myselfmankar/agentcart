@@ -1,0 +1,73 @@
+{
+  "merchant_id": "merchant_a",
+  "name": "UrbanKicks",
+  "currency": "INR",
+  "products": [
+    {
+      "product_id": "adidas-runfalcon-3",
+      "brand": "Adidas",
+      "name": "Runfalcon 3",
+      "category": "running",
+      "variants": [
+        {
+          "color": "blue",
+          "size": 9,
+          "price": 4799,
+          "stock": 2
+        },
+        {
+          "color": "blue",
+          "size": 10,
+          "price": 5299,
+          "stock": 5
+        },
+        {
+          "color": "black",
+          "size": 10,
+          "price": 5199,
+          "stock": 4
+        }
+      ]
+    },
+    {
+      "product_id": "nike-revolution-7",
+      "brand": "Nike",
+      "name": "Revolution 7",
+      "category": "running",
+      "variants": [
+        {
+          "color": "blue",
+          "size": 10,
+          "price": 4599,
+          "stock": 2
+        },
+        {
+          "color": "black",
+          "size": 10,
+          "price": 4499,
+          "stock": 6
+        }
+      ]
+    },
+    {
+      "product_id": "puma-smash-v2",
+      "brand": "Puma",
+      "name": "Smash v2",
+      "category": "casual",
+      "variants": [
+        {
+          "color": "white",
+          "size": 9,
+          "price": 3299,
+          "stock": 7
+        },
+        {
+          "color": "black",
+          "size": 10,
+          "price": 3399,
+          "stock": 2
+        }
+      ]
+    }
+  ]
+}

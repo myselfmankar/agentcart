@@ -21,18 +21,7 @@
           "price": 4999,
           "stock": 6
         }
-      ],
-      "discount": {
-        "type": "negotiable",
-        "max_amount": 450,
-        "minimum_price": 4650,
-        "eligible_if": "stock_above_5"
-      },
-      "delivery": {
-        "standard_days": 3,
-        "express_days": 1,
-        "express_fee": 0
-      }
+      ]
     },
     {
       "product_id": "nike-revolution-7",
@@ -52,18 +41,7 @@
           "price": 4599,
           "stock": 8
         }
-      ],
-      "discount": {
-        "type": "negotiable",
-        "max_amount": 300,
-        "minimum_price": 4300,
-        "eligible_if": "stock_above_4"
-      },
-      "delivery": {
-        "standard_days": 3,
-        "express_days": 1,
-        "express_fee": 0
-      }
+      ]
     },
     {
       "product_id": "puma-smash-v2",
@@ -77,17 +55,7 @@
           "price": 3499,
           "stock": 10
         }
-      ],
-      "discount": {
-        "type": "flat",
-        "amount": 300,
-        "eligible_if": "stock_above_5"
-      },
-      "delivery": {
-        "standard_days": 2,
-        "express_days": 1,
-        "express_fee": 0
-      }
+      ]
     }
   ]
 }

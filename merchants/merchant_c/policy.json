@@ -1,0 +1,57 @@
+{
+  "merchant_id": "merchant_c",
+  "name": "FastFeet",
+  "business_objective": "Maximize inventory turnover and conversion velocity; competitive dynamic pricing with aggressive price-matching counter-offers and free 1-day express delivery.",
+  "pricing_policy": {
+    "target_margin_pct": 15,
+    "currency": "INR"
+  },
+  "discount_policy": {
+    "adidas-runfalcon-3": {
+      "type": "negotiable",
+      "max_amount": 450,
+      "minimum_price": 4650,
+      "eligible_if": "stock_above_5"
+    },
+    "nike-revolution-7": {
+      "type": "negotiable",
+      "max_amount": 300,
+      "minimum_price": 4300,
+      "eligible_if": "stock_above_4"
+    },
+    "puma-smash-v2": {
+      "type": "flat",
+      "amount": 300,
+      "eligible_if": "stock_above_5"
+    }
+  },
+  "negotiation_policy": {
+    "allows_negotiation": true,
+    "floor_price": 4650,
+    "undercut_step": 50.0,
+    "max_concession": 450,
+    "rationale": "Empowered to beat competitor quotes by up to ₹50 below competitor quote, provided price remains at or above ₹4,650 floor."
+  },
+  "fulfillment_policy": {
+    "default": {
+      "standard_days": 3,
+      "express_days": 1,
+      "express_fee": 0
+    },
+    "adidas-runfalcon-3": {
+      "standard_days": 3,
+      "express_days": 1,
+      "express_fee": 0
+    },
+    "nike-revolution-7": {
+      "standard_days": 3,
+      "express_days": 1,
+      "express_fee": 0
+    },
+    "puma-smash-v2": {
+      "standard_days": 2,
+      "express_days": 1,
+      "express_fee": 0
+    }
+  }
+}
