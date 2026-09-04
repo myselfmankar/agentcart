@@ -6,12 +6,16 @@ Provides a clean interface for Razorpay operations in Test Mode:
 - Provides reliable local mock simulation when credentials are not supplied
 """
 
+import logging
 import os
+import re
 import uuid
 from typing import Any, Dict, Optional
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logger = logging.getLogger("razorpay_client")
 
 import razorpay
 from app.modules.audit.trail import audit_trail
@@ -213,6 +217,200 @@ class RazorpayClientAdapter:
             },
         )
         return payment
+
+    def resolve_merchant_fund_account(
+        self,
+        merchant_id: str,
+        merchant_name: Optional[str] = None,
+        preferred_vpa: Optional[str] = None,
+    ) -> Optional[str]:
+        """Dynamically discovers or provisions a RazorpayX contact and fund account for a merchant.
+
+        Zero hardcoding: dynamically discovers existing contacts/fund accounts on RazorpayX,
+        or provisions them via API for newly onboarded merchants.
+        """
+        if not hasattr(self, "_fund_account_cache"):
+            self._fund_account_cache: Dict[str, str] = {}
+
+        if merchant_id in self._fund_account_cache:
+            return self._fund_account_cache[merchant_id]
+
+        if not self.is_live_mcp:
+            return None
+
+        name_to_match = (merchant_name or merchant_id).strip()
+        vpa_handle = preferred_vpa or f"{re.sub(r'[^a-zA-Z0-9]', '', name_to_match).lower()}@razorpay"
+
+        try:
+            import requests
+
+            # 1. Search existing contacts on RazorpayX
+            resp = requests.get(
+                "https://api.razorpay.com/v1/contacts",
+                auth=(self.key_id, self.key_secret),
+                timeout=5.0,
+            )
+            contact_id = None
+            if resp.status_code == 200:
+                contacts = resp.json().get("items", [])
+                for c in contacts:
+                    c_name = c.get("name", "").lower()
+                    if name_to_match.lower() in c_name or merchant_id.lower() in c_name:
+                        contact_id = c.get("id")
+                        break
+
+            # 2. If contact does not exist on RazorpayX, create it dynamically
+            if not contact_id:
+                create_contact_resp = requests.post(
+                    "https://api.razorpay.com/v1/contacts",
+                    auth=(self.key_id, self.key_secret),
+                    json={
+                        "name": f"{name_to_match} Merchant",
+                        "type": "vendor",
+                        "reference_id": f"ref_{merchant_id}",
+                    },
+                    timeout=5.0,
+                )
+                if create_contact_resp.status_code in (200, 201):
+                    contact_id = create_contact_resp.json().get("id")
+
+            if not contact_id:
+                return None
+
+            # 3. Search existing fund accounts for this contact
+            fa_resp = requests.get(
+                f"https://api.razorpay.com/v1/fund_accounts?contact_id={contact_id}",
+                auth=(self.key_id, self.key_secret),
+                timeout=5.0,
+            )
+            fund_account_id = None
+            if fa_resp.status_code == 200:
+                fas = fa_resp.json().get("items", [])
+                if fas:
+                    fund_account_id = fas[0].get("id")
+
+            # 4. If fund account does not exist, provision it dynamically
+            if not fund_account_id:
+                create_fa_resp = requests.post(
+                    "https://api.razorpay.com/v1/fund_accounts",
+                    auth=(self.key_id, self.key_secret),
+                    json={
+                        "contact_id": contact_id,
+                        "account_type": "vpa",
+                        "vpa": {"address": vpa_handle},
+                    },
+                    timeout=5.0,
+                )
+                if create_fa_resp.status_code in (200, 201):
+                    fund_account_id = create_fa_resp.json().get("id")
+
+            if fund_account_id:
+                self._fund_account_cache[merchant_id] = fund_account_id
+                if merchant_name:
+                    self._fund_account_cache[merchant_name] = fund_account_id
+                return fund_account_id
+
+        except Exception as e:
+            logger.warning("Could not dynamically resolve fund account for %s: %s", merchant_id, e)
+
+        return None
+
+    def execute_payout(
+        self,
+        merchant_id: str,
+        amount_inr: float,
+        merchant_name: Optional[str] = None,
+        currency: str = "INR",
+        reference_id: Optional[str] = None,
+        narration: str = "Agentic Commerce Payout",
+        objective_id: str = "obj_default",
+    ) -> Optional[Dict[str, Any]]:
+        """Creates an authentic RazorpayX payout directly to the merchant's fund account."""
+        if os.environ.get("PYTEST_CURRENT_TEST"):
+            return None
+
+        acc = os.getenv("RAZORPAYX_ACCOUNT_NUMBER")
+        if not (self.is_live_mcp and acc):
+            return None
+
+        fund_account_id = self.resolve_merchant_fund_account(
+            merchant_id=merchant_id,
+            merchant_name=merchant_name,
+        )
+        if not fund_account_id:
+            logger.warning("No fund account found or provisioned for merchant %s", merchant_id)
+            return None
+
+        amount_paise = int(round(amount_inr * 100))
+        ref = reference_id or f"pout_{uuid.uuid4().hex[:12]}"
+        clean_narration = re.sub(r"[^a-zA-Z0-9 ]", "", narration)[:30].strip() or "Agentic Commerce"
+
+        audit_trail.log_event(
+            event_type="RAZORPAYX_PAYOUT_INITIATED",
+            objective_id=objective_id,
+            details={
+                "merchant_id": merchant_id,
+                "fund_account_id": fund_account_id,
+                "amount_inr": amount_inr,
+                "currency": currency,
+                "account_number": acc,
+                "reference_id": ref,
+                "narration": clean_narration,
+            },
+        )
+
+        try:
+            import requests
+
+            payload = {
+                "account_number": acc,
+                "fund_account_id": fund_account_id,
+                "amount": amount_paise,
+                "currency": currency,
+                "mode": "UPI",
+                "purpose": "vendor bill",
+                "queue_if_low_balance": True,
+                "reference_id": ref,
+                "narration": clean_narration,
+            }
+            resp = requests.post(
+                "https://api.razorpay.com/v1/payouts",
+                auth=(self.key_id, self.key_secret),
+                json=payload,
+                timeout=10.0,
+            )
+            if resp.status_code in (200, 201):
+                payout_data = resp.json()
+                audit_trail.log_event(
+                    event_type="RAZORPAYX_PAYOUT_CREATED",
+                    objective_id=objective_id,
+                    details={
+                        "payout_id": payout_data.get("id"),
+                        "status": payout_data.get("status"),
+                        "amount_inr": amount_inr,
+                        "fund_account_id": fund_account_id,
+                        "merchant_id": merchant_id,
+                    },
+                )
+                return payout_data
+            else:
+                audit_trail.log_event(
+                    event_type="RAZORPAYX_PAYOUT_FAILED",
+                    objective_id=objective_id,
+                    details={
+                        "status_code": resp.status_code,
+                        "error": resp.text,
+                    },
+                    level="WARNING",
+                )
+        except Exception as e:
+            audit_trail.log_event(
+                event_type="RAZORPAYX_PAYOUT_ERROR",
+                objective_id=objective_id,
+                details={"error": str(e)},
+                level="WARNING",
+            )
+        return None
 
 
 # Global singleton client

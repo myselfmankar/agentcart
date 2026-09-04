@@ -395,6 +395,16 @@ class ShoppingAgentOrchestrator:
                 "money_moved_inr": 0.0,
             }
 
+        # 16b. RazorpayX Direct Payout to Merchant Fund Account
+        payout = razorpay_client.execute_payout(
+            merchant_id=merchant_id,
+            amount_inr=amount,
+            currency=checkout_session.currency,
+            reference_id=f"pout_{objective_id}",
+            narration=f"Order {order['id']}",
+            objective_id=objective_id,
+        )
+
         # 17. Reconcile Buyer Balance Ledger upon Verified Payment
         buyer_ledger.record_debit(
             transaction_id=f"tx_{objective_id}",
@@ -433,6 +443,8 @@ class ShoppingAgentOrchestrator:
             "amount_paid_inr": amount,
             "order_id": order["id"],
             "payment_id": payment["id"],
+            "razorpayx_payout_id": payout.get("id") if payout else None,
+            "razorpayx_payout_status": payout.get("status") if payout else None,
             "checkout_session_id": checkout_session.id,
             "checkout_hash": auth_token.checkout_hash,
             "closed_checkout_mandate_id": closed_checkout["mandate_id"],

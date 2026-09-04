@@ -127,6 +127,7 @@ def run_autonomous_purchase(
                 tool_context.state["user:balance"] = result.get("remaining_balance_inr", buyer_ledger.available_balance)
                 tool_context.state["session:last_order_id"] = result.get("order_id", "")
                 tool_context.state["session:last_payment_id"] = result.get("payment_id", "")
+                tool_context.state["session:last_payout_id"] = result.get("razorpayx_payout_id", "")
                 tool_context.state["session:winning_merchant"] = result.get("merchant", "")
         except Exception:
             pass
@@ -151,7 +152,7 @@ Responsibilities:
 - Conduct strategic 1-to-1 A2A price and delivery negotiation.
 - Deterministically enforce buyer policies and buyer balance limits before payment.
 - Coordinate AP2 Open and Closed Mandates.
-- Execute real test payment capture via Razorpay MCP.
+- Execute real test payment capture and RazorpayX payouts to merchant fund accounts.
 - Explain the final decision clearly with full audit transparency.
 
 Execution Behavior:
@@ -160,7 +161,7 @@ Execution Behavior:
 - Provide a clear, transparent final summary:
   1. Winning merchant, item purchased, and final price.
   2. Negotiation savings and delivery speed terms.
-  3. AP2 mandate verification status and Razorpay Order/Payment IDs.
+  3. AP2 mandate verification status, Razorpay Order/Payment IDs, and RazorpayX Payout ID (if generated).
   4. Remaining buyer balance.
 - If the purchase fails due to INSUFFICIENT_BUYER_BALANCE:
   Explain that a qualifying offer was found, but the purchase was blocked by the buyer spending authority. Confirm that Razorpay was NOT called and specify the shortfall.
