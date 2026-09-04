@@ -157,7 +157,8 @@ def test_a2a_telemetry_spans_and_w3c_carrier(otel_in_memory):
     assert "a2a.checkout_hash" in co_span.attributes
 
 
-def test_a2a_audit_plugin_lifecycle_callbacks():
+@pytest.mark.asyncio
+async def test_a2a_audit_plugin_lifecycle_callbacks():
     """Verify A2AAuditTracePlugin sanitization and lifecycle hooks into audit_trail."""
     plugin = A2AAuditTracePlugin(name="test_plugin")
 
@@ -182,7 +183,7 @@ def test_a2a_audit_plugin_lifecycle_callbacks():
     mock_tool = SimpleNamespace(name="run_autonomous_purchase")
     mock_ctx = SimpleNamespace(invocation_id="inv_test_lifecycle")
 
-    plugin.before_tool_callback(
+    await plugin.before_tool_callback(
         tool=mock_tool,
         tool_args={"query": "shoes", "max_budget": 5000.0, "secret_code": "1234"},
         tool_context=mock_ctx,
@@ -196,7 +197,7 @@ def test_a2a_audit_plugin_lifecycle_callbacks():
     assert start_events[-1]["details"]["arguments"]["secret_code"] == "[REDACTED]"
 
     # 3. After tool callback
-    plugin.after_tool_callback(
+    await plugin.after_tool_callback(
         tool=mock_tool,
         tool_args={"query": "shoes"},
         tool_context=mock_ctx,
@@ -212,7 +213,7 @@ def test_a2a_audit_plugin_lifecycle_callbacks():
     assert "duration_ms" in complete_events[-1]["details"]
 
     # 4. Error callback
-    plugin.on_tool_error_callback(
+    await plugin.on_tool_error_callback(
         tool=mock_tool,
         tool_args={"query": "shoes"},
         tool_context=mock_ctx,

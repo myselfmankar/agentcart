@@ -35,7 +35,7 @@ class A2AAuditTracePlugin(BasePlugin):
             return [self._sanitize_payload(item) for item in data]
         return data
 
-    def before_tool_callback(
+    async def before_tool_callback(
         self,
         *,
         tool,
@@ -63,7 +63,7 @@ class A2AAuditTracePlugin(BasePlugin):
         )
         return None
 
-    def after_tool_callback(
+    async def after_tool_callback(
         self,
         *,
         tool,
@@ -100,7 +100,7 @@ class A2AAuditTracePlugin(BasePlugin):
         )
         return None
 
-    def on_tool_error_callback(
+    async def on_tool_error_callback(
         self,
         *,
         tool,
@@ -128,7 +128,7 @@ class A2AAuditTracePlugin(BasePlugin):
         )
         return None
 
-    def on_user_message_callback(
+    async def on_user_message_callback(
         self,
         *,
         invocation_context,
@@ -150,7 +150,7 @@ class A2AAuditTracePlugin(BasePlugin):
         )
         return None
 
-    def on_event_callback(
+    async def on_event_callback(
         self,
         *,
         invocation_context,
