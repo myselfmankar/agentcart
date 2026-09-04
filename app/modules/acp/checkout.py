@@ -9,10 +9,11 @@ Handles checkout session lifecycle:
 """
 
 import hashlib
-import json
 import time
 import uuid
-from typing import Any, Dict, List, Optional
+
+from jwcrypto import jwt
+
 from app.modules.acp.models import (
     AuthoritativeCheckoutToken,
     CheckoutSession,
@@ -23,25 +24,24 @@ from app.modules.acp.models import (
     PaymentAllowance,
 )
 from app.modules.ap2.keys import get_merchant_key
-from jwcrypto import jwt
 
 
 class CheckoutManager:
     """Manages active ACP checkout sessions and enforces merchant authoritative state."""
 
     def __init__(self):
-        self._sessions: Dict[str, CheckoutSession] = {}
+        self._sessions: dict[str, CheckoutSession] = {}
 
     def create_session(
         self,
         merchant_id: str,
         merchant_name: str,
-        items: List[Item],
-        quantities: Optional[List[int]] = None,
+        items: list[Item],
+        quantities: list[int] | None = None,
         ttl_minutes: int = 15,
         tax_rate: float = 0.0,
         shipping_cost: float = 0.0,
-        fulfillment: Optional[FulfillmentOption] = None,
+        fulfillment: FulfillmentOption | None = None,
     ) -> CheckoutSession:
         if quantities is None:
             quantities = [1] * len(items)
@@ -77,7 +77,7 @@ class CheckoutManager:
         self._sessions[session_id] = session
         return session
 
-    def get_session(self, session_id: str) -> Optional[CheckoutSession]:
+    def get_session(self, session_id: str) -> CheckoutSession | None:
         return self._sessions.get(session_id)
 
     def select_fulfillment(self, session_id: str, fulfillment: FulfillmentOption) -> CheckoutSession:

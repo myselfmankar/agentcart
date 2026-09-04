@@ -9,7 +9,7 @@ Generates and persists EC P-256 JWK keys:
 import json
 import os
 from pathlib import Path
-from typing import Optional
+
 from cryptography.hazmat.primitives.asymmetric import ec
 from jwcrypto.jwk import JWK
 

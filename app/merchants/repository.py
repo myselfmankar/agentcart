@@ -8,8 +8,9 @@ Supports hot reload so that live updates to stock, pricing, and discounts are im
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
-from app.modules.acp.models import Item, FulfillmentOption
+from typing import Any
+
+from app.modules.acp.models import FulfillmentOption, Item
 
 _logger = logging.getLogger("agentic_commerce.merchant_repository")
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -19,10 +20,10 @@ DATA_DIR = _REPO_ROOT / "data" / "merchants"
 class MerchantRepository:
     """Thread-safe file-backed repository for private merchant state."""
 
-    def __init__(self, data_dir: Optional[Path] = None):
+    def __init__(self, data_dir: Path | None = None):
         self.data_dir = data_dir or DATA_DIR
         self.data_dir.mkdir(parents=True, exist_ok=True)
-        self._cache: Dict[str, Dict[str, Any]] = {}
+        self._cache: dict[str, dict[str, Any]] = {}
 
     def _get_file_path(self, merchant_id: str) -> Path:
         isolated_path = _REPO_ROOT / "merchants" / merchant_id / "catalog.json"
@@ -30,7 +31,7 @@ class MerchantRepository:
             return isolated_path
         return self.data_dir / f"{merchant_id}.json"
 
-    def load_merchant_data(self, merchant_id: str) -> Dict[str, Any]:
+    def load_merchant_data(self, merchant_id: str) -> dict[str, Any]:
         """Loads and returns the raw merchant JSON from disk."""
         path = self._get_file_path(merchant_id)
         if not path.exists():
@@ -40,19 +41,19 @@ class MerchantRepository:
         self._cache[merchant_id] = data
         return data
 
-    def save_merchant_data(self, merchant_id: str, data: Dict[str, Any]) -> None:
+    def save_merchant_data(self, merchant_id: str, data: dict[str, Any]) -> None:
         """Persists updated merchant data back to disk."""
         path = self._get_file_path(merchant_id)
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
         self._cache[merchant_id] = data
 
-    def get_catalog_items(self, merchant_id: str) -> List[Item]:
+    def get_catalog_items(self, merchant_id: str) -> list[Item]:
         """Loads items from merchant JSON and converts them to ACP Item models."""
         data = self.load_merchant_data(merchant_id)
         merchant_name = data.get("name") or data.get("merchant_name", merchant_id)
         currency = data.get("currency", "INR")
-        items: List[Item] = []
+        items: list[Item] = []
 
         # 1. New schema: "products" with "variants"
         if "products" in data:
@@ -109,13 +110,13 @@ class MerchantRepository:
 
         return items
 
-    def get_fulfillment_options(self, merchant_id: str) -> List[FulfillmentOption]:
+    def get_fulfillment_options(self, merchant_id: str) -> list[FulfillmentOption]:
         """Returns standard delivery and express delivery if configured."""
         data = self.load_merchant_data(merchant_id)
-        opts: List[FulfillmentOption] = []
+        opts: list[FulfillmentOption] = []
 
         # Check if products have delivery specs
-        if "products" in data and data["products"]:
+        if data.get("products"):
             deliv = data["products"][0].get("delivery", {})
             std_days = deliv.get("standard_days", 4)
             exp_days = deliv.get("express_days", 2)
@@ -134,7 +135,7 @@ class MerchantRepository:
                 )
         return opts
 
-    def get_item(self, merchant_id: str, item_id: str) -> Optional[Item]:
+    def get_item(self, merchant_id: str, item_id: str) -> Item | None:
         items = self.get_catalog_items(merchant_id)
         for item in items:
             if item.id == item_id or item.attributes.get("product_id") == item_id:
@@ -146,7 +147,7 @@ class MerchantRepository:
                 return item
         return None
 
-    def update_stock(self, merchant_id: str, item_id: str, new_stock: int) -> Optional[Item]:
+    def update_stock(self, merchant_id: str, item_id: str, new_stock: int) -> Item | None:
         """Updates stock for a product variant on disk."""
         data = self.load_merchant_data(merchant_id)
 
@@ -180,7 +181,7 @@ class MerchantRepository:
 
         return None
 
-    def update_price(self, merchant_id: str, item_id: str, new_price: float) -> Optional[Item]:
+    def update_price(self, merchant_id: str, item_id: str, new_price: float) -> Item | None:
         """Updates price for a product variant on disk."""
         data = self.load_merchant_data(merchant_id)
 

@@ -1,12 +1,17 @@
 """Tests for Razorpay Webhook Verification, Idempotency, and State Truth."""
 
-import hmac
 import hashlib
+import hmac
 import json
+
 import pytest
-from app.modules.razorpay.webhooks import webhook_handler, WebhookVerificationError
-from app.modules.watch.objective import ShoppingObjective, ObjectiveStatus, objective_store
-from app.modules.audit.trail import audit_trail
+
+from app.modules.razorpay.webhooks import WebhookVerificationError, webhook_handler
+from app.modules.watch.objective import (
+    ObjectiveStatus,
+    ShoppingObjective,
+    objective_store,
+)
 
 SECRET = "whsec_mockWebhookSecret12345"
 
@@ -42,7 +47,7 @@ def test_valid_webhook_signature_and_processing():
     body_bytes = json.dumps(payload).encode("utf-8")
     sig = generate_signature(body_bytes)
 
-    success, msg, data = webhook_handler.process_webhook(
+    success, msg, _data = webhook_handler.process_webhook(
         raw_body=body_bytes, signature=sig, event_id="evt_capture_123"
     )
 
@@ -113,7 +118,7 @@ def test_payment_failed_webhook_transitions_objective_to_failed():
     body_bytes = json.dumps(payload).encode("utf-8")
     sig = generate_signature(body_bytes)
 
-    success, msg, data = webhook_handler.process_webhook(body_bytes, sig, event_id="evt_fail_999")
+    success, msg, _data = webhook_handler.process_webhook(body_bytes, sig, event_id="evt_fail_999")
     assert success is True
     assert "FAILED" in msg
 
@@ -162,7 +167,7 @@ def test_virtual_account_credited_webhook_wakes_awaiting_funds():
     body_bytes = json.dumps(payload).encode("utf-8")
     sig = generate_signature(body_bytes)
 
-    success, msg, _ = webhook_handler.process_webhook(body_bytes, sig, event_id="evt_topup_123")
+    success, _msg, _ = webhook_handler.process_webhook(body_bytes, sig, event_id="evt_topup_123")
     assert success is True
     assert buyer_ledger.available_balance > 1000.0
 

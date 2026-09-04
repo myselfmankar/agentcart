@@ -10,7 +10,8 @@ Defines standardized commerce data structures for agent-to-merchant transactions
 """
 
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -37,8 +38,8 @@ class Item(BaseModel):
     price: float
     currency: str = "INR"
     stock: int
-    attributes: Dict[str, Any] = Field(default_factory=dict)
-    description: Optional[str] = None
+    attributes: dict[str, Any] = Field(default_factory=dict)
+    description: str | None = None
 
 
 class LineItem(BaseModel):
@@ -56,7 +57,7 @@ class PaymentAllowance(BaseModel):
     merchant_id: str
     one_time_usage: bool = True
     idempotency_key: str
-    risk_signals: Dict[str, Any] = Field(default_factory=dict)
+    risk_signals: dict[str, Any] = Field(default_factory=dict)
 
 
 class AuthoritativeCheckoutToken(BaseModel):
@@ -74,28 +75,28 @@ class CheckoutSession(BaseModel):
     id: str
     merchant_id: str
     merchant_name: str
-    line_items: List[LineItem]
+    line_items: list[LineItem]
     currency: str = "INR"
     subtotal: float
     tax: float = 0.0
     shipping: float = 0.0
     total_amount: float
     status: CheckoutStatus = CheckoutStatus.DRAFT
-    fulfillment: Optional[FulfillmentOption] = None
-    payment_order_id: Optional[str] = None
-    payment_id: Optional[str] = None
-    checkout_jwt: Optional[str] = None
-    checkout_hash: Optional[str] = None
-    payment_allowance: Optional[PaymentAllowance] = None
+    fulfillment: FulfillmentOption | None = None
+    payment_order_id: str | None = None
+    payment_id: str | None = None
+    checkout_jwt: str | None = None
+    checkout_hash: str | None = None
+    payment_allowance: PaymentAllowance | None = None
     created_at: float
     expires_at: float
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class PaymentConfirmation(BaseModel):
     success: bool
     order_id: str
-    payment_id: Optional[str] = None
+    payment_id: str | None = None
     amount: float
     currency: str
     status: str
@@ -118,8 +119,8 @@ class MerchantProposal(BaseModel):
     express_delivery_days: int = 2
     express_delivery_fee: float = 0.0
     is_negotiable: bool = False
-    minimum_price_floor: Optional[float] = None
+    minimum_price_floor: float | None = None
     commercial_pitch: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return self.model_dump()

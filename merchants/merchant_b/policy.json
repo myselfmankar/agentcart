@@ -1,7 +1,7 @@
 {
   "merchant_id": "merchant_b",
   "name": "ShoeKart",
-  "business_objective": "Clearance and value footwear outlet; low inventory; tight margins with no negotiation authority.",
+  "business_objective": "Clearance and value basics outlet; low inventory; tight margins with no negotiation authority.",
   "pricing_policy": {
     "target_margin_pct": 10,
     "currency": "INR"
@@ -12,15 +12,15 @@
       "amount": 250,
       "eligible_if": "stock_above_2"
     },
-    "nike-revolution-7": {
+    "solid-pique-polo": {
       "type": "flat",
-      "amount": 300,
-      "eligible_if": "stock_above_4"
-    },
-    "puma-smash-v2": {
-      "type": "percentage",
-      "amount": 5,
+      "amount": 150,
       "eligible_if": "any"
+    },
+    "slim-tapered-denim": {
+      "type": "flat",
+      "amount": 200,
+      "eligible_if": "stock_above_2"
     }
   },
   "negotiation_policy": {
@@ -29,19 +29,24 @@
   },
   "fulfillment_policy": {
     "default": {
-      "standard_days": 6,
-      "express_days": 3,
-      "express_fee": 199
-    },
-    "nike-revolution-7": {
-      "standard_days": 7,
-      "express_days": 3,
-      "express_fee": 149
-    },
-    "puma-smash-v2": {
       "standard_days": 5,
-      "express_days": 2,
-      "express_fee": 99
+      "express_days": 5,
+      "express_fee": 0
+    },
+    "adidas-runfalcon-3": {
+      "standard_days": 5,
+      "express_days": 5,
+      "express_fee": 0
+    },
+    "solid-pique-polo": {
+      "standard_days": 3,
+      "express_days": 3,
+      "express_fee": 0
+    },
+    "slim-tapered-denim": {
+      "standard_days": 5,
+      "express_days": 5,
+      "express_fee": 0
     }
   }
 }

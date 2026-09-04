@@ -7,14 +7,16 @@
       "product_id": "adidas-runfalcon-3",
       "brand": "Adidas",
       "name": "Runfalcon 3",
-      "category": "running",
+      "category": "sneakers",
+      "available_sizes": [
+        9,
+        10
+      ],
+      "available_colors": [
+        "blue",
+        "black"
+      ],
       "variants": [
-        {
-          "color": "blue",
-          "size": 9,
-          "price": 4799,
-          "stock": 2
-        },
         {
           "color": "blue",
           "size": 10,
@@ -24,80 +26,80 @@
         {
           "color": "black",
           "size": 10,
-          "price": 5199,
+          "price": 5399,
           "stock": 4
-        }
-      ],
-      "discount": {
-        "type": "flat",
-        "amount": 400,
-        "eligible_if": "stock_above_3"
-      },
-      "delivery": {
-        "standard_days": 4,
-        "express_days": 2,
-        "express_fee": 149
-      }
-    },
-    {
-      "product_id": "nike-revolution-7",
-      "brand": "Nike",
-      "name": "Revolution 7",
-      "category": "running",
-      "variants": [
+        },
         {
           "color": "blue",
-          "size": 10,
-          "price": 4599,
+          "size": 9,
+          "price": 5199,
           "stock": 3
-        },
-        {
-          "color": "black",
-          "size": 10,
-          "price": 4499,
-          "stock": 6
         }
-      ],
-      "discount": {
-        "type": "percentage",
-        "amount": 10,
-        "eligible_if": "stock_above_5"
-      },
-      "delivery": {
-        "standard_days": 5,
-        "express_days": 2,
-        "express_fee": 99
-      }
+      ]
     },
     {
-      "product_id": "puma-smash-v2",
-      "brand": "Puma",
-      "name": "Smash v2",
-      "category": "casual",
+      "product_id": "vintage-boxy-tee",
+      "brand": "UrbanStyle",
+      "name": "Vintage Boxy Graphic Tee",
+      "category": "t-shirts",
+      "available_sizes": [
+        "M",
+        "L",
+        "XL"
+      ],
+      "available_colors": [
+        "black",
+        "vintage-white"
+      ],
       "variants": [
         {
-          "color": "white",
-          "size": 9,
-          "price": 3299,
-          "stock": 7
+          "color": "black",
+          "size": "L",
+          "price": 1799,
+          "stock": 6
         },
         {
           "color": "black",
-          "size": 10,
-          "price": 3399,
-          "stock": 2
+          "size": "M",
+          "price": 1799,
+          "stock": 4
+        },
+        {
+          "color": "vintage-white",
+          "size": "L",
+          "price": 1899,
+          "stock": 5
         }
+      ]
+    },
+    {
+      "product_id": "relaxed-fit-cargo",
+      "brand": "CargoLab",
+      "name": "Relaxed Fit Tactical Cargo Pants",
+      "category": "pants",
+      "available_sizes": [
+        "30",
+        "32",
+        "34"
       ],
-      "discount": {
-        "type": "flat",
-        "amount": 200,
-        "eligible_if": "any"
-      },
-      "delivery": {
-        "standard_days": 4,
-        "express_days": 2,
-        "express_fee": 99
-      }
+      "available_colors": [
+        "olive",
+        "black"
+      ],
+      "variants": [
+        {
+          "color": "olive",
+          "size": "32",
+          "price": 2899,
+          "stock": 5
+        },
+        {
+          "color": "black",
+          "size": "32",
+          "price": 2999,
+          "stock": 4
+        }
+      ]
     }
   ]
 }

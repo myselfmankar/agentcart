@@ -7,7 +7,16 @@
       "product_id": "adidas-runfalcon-3",
       "brand": "Adidas",
       "name": "Runfalcon 3",
-      "category": "running",
+      "category": "sneakers",
+      "available_sizes": [
+        9,
+        10
+      ],
+      "available_colors": [
+        "blue",
+        "black",
+        "white"
+      ],
       "variants": [
         {
           "color": "blue",
@@ -18,41 +27,77 @@
         {
           "color": "black",
           "size": 10,
-          "price": 4699,
-          "stock": 4
-        }
-      ]
-    },
-    {
-      "product_id": "nike-revolution-7",
-      "brand": "Nike",
-      "name": "Revolution 7",
-      "category": "running",
-      "variants": [
-        {
-          "color": "blue",
-          "size": 10,
-          "price": 4399,
+          "price": 4799,
           "stock": 2
         },
         {
-          "color": "black",
+          "color": "white",
           "size": 10,
-          "price": 4299,
+          "price": 4999,
           "stock": 5
         }
       ]
     },
     {
-      "product_id": "puma-smash-v2",
-      "brand": "Puma",
-      "name": "Smash v2",
-      "category": "casual",
+      "product_id": "solid-pique-polo",
+      "brand": "PoloClub",
+      "name": "Solid Pique Classic Polo",
+      "category": "t-shirts",
+      "available_sizes": [
+        "M",
+        "L",
+        "XL"
+      ],
+      "available_colors": [
+        "navy",
+        "white"
+      ],
       "variants": [
         {
+          "color": "navy",
+          "size": "L",
+          "price": 1299,
+          "stock": 8
+        },
+        {
           "color": "white",
-          "size": 10,
-          "price": 3199,
+          "size": "L",
+          "price": 1299,
+          "stock": 6
+        },
+        {
+          "color": "navy",
+          "size": "M",
+          "price": 1249,
+          "stock": 4
+        }
+      ]
+    },
+    {
+      "product_id": "slim-tapered-denim",
+      "brand": "DenimCo",
+      "name": "Slim Tapered Stretch Denim Jeans",
+      "category": "jeans",
+      "available_sizes": [
+        "30",
+        "32",
+        "34"
+      ],
+      "available_colors": [
+        "dark-blue",
+        "black"
+      ],
+      "variants": [
+        {
+          "color": "dark-blue",
+          "size": "32",
+          "price": 2199,
+          "stock": 6
+        },
+        {
+          "color": "black",
+          "size": "32",
+          "price": 2299,
           "stock": 5
         }
       ]

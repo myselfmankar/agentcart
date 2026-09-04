@@ -9,30 +9,25 @@ Covers:
 6. Tamper-evident cryptographic audit trail verification.
 """
 
-import json
 import os
-import pytest
-from unittest.mock import MagicMock
 from types import SimpleNamespace
 
+import pytest
+from google.adk.evaluation.eval_set import EvalSet
+from google.adk.evaluation.local_eval_sets_manager import load_eval_set_from_file
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-from google.adk.evaluation.local_eval_sets_manager import load_eval_set_from_file
-from google.adk.evaluation.eval_set import EvalSet
-from google.adk.telemetry import tracer
-
-from app.modules.a2a.client import a2a_client
-from app.modules.acp.models import MerchantProposal
-from app.modules.audit.adk_plugin import A2AAuditTracePlugin, a2a_audit_plugin
-from app.modules.audit.trail import audit_trail
-from app.modules.buyer.ledger import buyer_ledger
 from adk_agents.shopping_agent.buyer_agent import (
     check_buyer_balance,
     run_autonomous_purchase,
 )
+from app.modules.a2a.client import a2a_client
+from app.modules.audit.adk_plugin import A2AAuditTracePlugin
+from app.modules.audit.trail import audit_trail
+from app.modules.buyer.ledger import buyer_ledger
 
 
 @pytest.fixture(autouse=True)

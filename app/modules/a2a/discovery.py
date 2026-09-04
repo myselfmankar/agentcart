@@ -5,7 +5,15 @@ Provides a protocol-faithful A2A boundary interface between the Shopping Agent
 and registered Merchant Agents.
 """
 
-from typing import Any, Dict, List, Optional
+import sys
+from pathlib import Path
+from typing import Any
+
+# Ensure project root is in sys.path
+_PROJECT_ROOT = str(Path(__file__).resolve().parent.parent.parent.parent)
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+
 from app.modules.a2a.agent_card import AgentCard, make_merchant_agent_card
 from app.modules.acp.models import AuthoritativeCheckoutToken, CheckoutSession, Item
 from app.modules.audit.trail import audit_trail
@@ -15,23 +23,25 @@ class MerchantRegistry:
     """Registry for discovering merchant agents and their capabilities."""
 
     def __init__(self):
-        self._merchants: Dict[str, Any] = {}
-        self._cards: Dict[str, AgentCard] = {}
+        self._merchants: dict[str, Any] = {}
+        self._cards: dict[str, AgentCard] = {}
         self._bootstrap_default_merchants()
 
     def _bootstrap_default_merchants(self):
         try:
+            if _PROJECT_ROOT not in sys.path:
+                sys.path.insert(0, _PROJECT_ROOT)
             from merchants.merchant_a.agent.agent import merchant_agent_a
             from merchants.merchant_b.agent.agent import merchant_agent_b
             from merchants.merchant_c.agent.agent import merchant_agent_c
 
             for agent in [merchant_agent_a, merchant_agent_b, merchant_agent_c]:
                 self.register_merchant(agent, agent.get_agent_card())
-        except Exception as e:
+        except Exception:
             # Fallback for dynamic / test environments
             pass
 
-    def register_merchant(self, merchant_agent: Any, card: Optional[AgentCard] = None):
+    def register_merchant(self, merchant_agent: Any, card: AgentCard | None = None):
         merchant_id = getattr(merchant_agent, "merchant_id", None)
         if not merchant_id and hasattr(card, "provider"):
             merchant_id = card.provider.get("id")
@@ -45,16 +55,41 @@ class MerchantRegistry:
         self._merchants[merchant_id] = merchant_agent
         self._cards[merchant_id] = card
 
-    def get_merchant(self, merchant_id: str) -> Optional[Any]:
-        return self._merchants.get(merchant_id)
+    def get_merchant(self, merchant_id: str) -> Any | None:
+        if not self._merchants:
+            self._bootstrap_default_merchants()
 
-    def list_merchants(self) -> List[Any]:
+        # 1. Exact match
+        if merchant_id in self._merchants:
+            return self._merchants[merchant_id]
+
+        # 2. Case-insensitive / slug match on ID and Merchant Name
+        clean_target = str(merchant_id).lower().replace("_", "").replace("-", "").strip()
+        for mid, m in self._merchants.items():
+            clean_mid = str(mid).lower().replace("_", "").replace("-", "").strip()
+            if clean_target == clean_mid:
+                return m
+            m_name = getattr(m, "merchant_name", "").lower().replace(" ", "").replace("-", "").replace("_", "")
+            if clean_target in m_name or m_name in clean_target:
+                return m
+
+        return None
+
+    def list_merchants(self) -> list[Any]:
+        if not self._merchants:
+            self._bootstrap_default_merchants()
         return list(self._merchants.values())
 
-    def get_agent_cards(self) -> List[AgentCard]:
+    def get_agent_cards(self) -> list[AgentCard]:
+        if not self._cards:
+            self._bootstrap_default_merchants()
         return list(self._cards.values())
 
-    def get_card(self, merchant_id: str) -> Optional[AgentCard]:
+    def get_card(self, merchant_id: str) -> AgentCard | None:
+        m = self.get_merchant(merchant_id)
+        if m:
+            mid = getattr(m, "merchant_id", merchant_id)
+            return self._cards.get(mid)
         return self._cards.get(merchant_id)
 
 
@@ -64,10 +99,10 @@ merchant_registry = MerchantRegistry()
 class A2AMerchantAdapter:
     """Dispatches requests across the A2A protocol boundary to merchant agents."""
 
-    def __init__(self, registry: Optional[MerchantRegistry] = None):
+    def __init__(self, registry: MerchantRegistry | None = None):
         self.registry = registry or merchant_registry
 
-    def discover_merchants(self, objective_id: str = "obj_default") -> List[AgentCard]:
+    def discover_merchants(self, objective_id: str = "obj_default") -> list[AgentCard]:
         cards = self.registry.get_agent_cards()
         for card in cards:
             audit_trail.log_event(
@@ -81,9 +116,9 @@ class A2AMerchantAdapter:
         self,
         merchant_id: str,
         query: str = "",
-        filters: Optional[Dict[str, Any]] = None,
+        filters: dict[str, Any] | None = None,
         objective_id: str = "obj_default",
-    ) -> List[Item]:
+    ) -> list[Item]:
         merchant = self.registry.get_merchant(merchant_id)
         if not merchant:
             raise ValueError(f"A2A: Merchant {merchant_id} not discovered in network")
@@ -95,7 +130,7 @@ class A2AMerchantAdapter:
         merchant_id: str,
         item_id: str,
         quantity: int = 1,
-        agreed_price: Optional[float] = None,
+        agreed_price: float | None = None,
         objective_id: str = "obj_default",
     ) -> CheckoutSession:
         merchant = self.registry.get_merchant(merchant_id)

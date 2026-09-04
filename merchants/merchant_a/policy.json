@@ -1,7 +1,7 @@
 {
   "merchant_id": "merchant_a",
   "name": "UrbanKicks",
-  "business_objective": "Maximize conversion with volume discounts; moderate margin protection with reliable 4-day delivery.",
+  "business_objective": "Maximize conversion with volume discounts; moderate margin protection with reliable 2 to 4-day delivery.",
   "pricing_policy": {
     "target_margin_pct": 20,
     "currency": "INR"
@@ -12,15 +12,15 @@
       "amount": 400,
       "eligible_if": "stock_above_3"
     },
-    "nike-revolution-7": {
-      "type": "percentage",
-      "amount": 10,
-      "eligible_if": "stock_above_5"
-    },
-    "puma-smash-v2": {
+    "vintage-boxy-tee": {
       "type": "flat",
       "amount": 200,
       "eligible_if": "any"
+    },
+    "relaxed-fit-cargo": {
+      "type": "flat",
+      "amount": 300,
+      "eligible_if": "stock_above_3"
     }
   },
   "negotiation_policy": {
@@ -29,19 +29,24 @@
   },
   "fulfillment_policy": {
     "default": {
-      "standard_days": 4,
-      "express_days": 2,
-      "express_fee": 149
+      "standard_days": 3,
+      "express_days": 3,
+      "express_fee": 0
     },
-    "nike-revolution-7": {
-      "standard_days": 5,
-      "express_days": 2,
-      "express_fee": 99
+    "adidas-runfalcon-3": {
+      "standard_days": 3,
+      "express_days": 3,
+      "express_fee": 0
     },
-    "puma-smash-v2": {
-      "standard_days": 4,
+    "vintage-boxy-tee": {
+      "standard_days": 2,
       "express_days": 2,
-      "express_fee": 99
+      "express_fee": 0
+    },
+    "relaxed-fit-cargo": {
+      "standard_days": 4,
+      "express_days": 4,
+      "express_fee": 0
     }
   }
 }

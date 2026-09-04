@@ -1,11 +1,10 @@
 """Tests for Deterministic Policy Gating and Hard Purchase Constraints."""
 
-import pytest
-from app.modules.policy.engine import policy_engine
-from app.modules.acp.models import Item
-from app.shopping_agent.orchestrator import shopping_orchestrator
 from app.merchants import merchant_c
+from app.modules.acp.models import Item
 from app.modules.audit.trail import audit_trail
+from app.modules.policy.engine import policy_engine
+from app.shopping_agent.orchestrator import shopping_orchestrator
 
 
 def test_policy_rejects_price_over_budget():

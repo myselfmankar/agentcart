@@ -11,7 +11,7 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 _AUDIT_LOGGER = logging.getLogger("agentic_commerce.audit")
 _AUDIT_LOGGER.setLevel(logging.INFO)
@@ -25,19 +25,19 @@ _AUDIT_FILE = _LOGS_DIR / "audit_trail.jsonl"
 class AuditTrail:
     """Thread-safe, append-only structured audit logger for explainable agent actions."""
 
-    def __init__(self, log_path: Optional[Path] = None):
+    def __init__(self, log_path: Path | None = None):
         self.log_path = log_path or _AUDIT_FILE
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
-        self.events: List[Dict[str, Any]] = []
+        self.events: list[dict[str, Any]] = []
         self.last_hash: str = "0" * 64
 
     def log_event(
         self,
         event_type: str,
         objective_id: str,
-        details: Dict[str, Any],
+        details: dict[str, Any],
         level: str = "INFO"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Record an auditable action or state transition with cryptographic hash chaining.
 
         Args:
@@ -60,7 +60,7 @@ class AuditTrail:
             sort_keys=True,
             default=str,
         )
-        current_hash = hashlib.sha256(f"{self.last_hash}:{payload}".encode("utf-8")).hexdigest()
+        current_hash = hashlib.sha256(f"{self.last_hash}:{payload}".encode()).hexdigest()
 
         entry = {
             "timestamp": t_now,
@@ -84,11 +84,11 @@ class AuditTrail:
         _AUDIT_LOGGER.info("[%s] [%s] %s", event_type, objective_id, json.dumps(sanitized, default=str))
         return entry
 
-    def get_events(self) -> List[Dict[str, Any]]:
+    def get_events(self) -> list[dict[str, Any]]:
         """Retrieve all recorded in-memory events."""
         return list(self.events)
 
-    def get_events_for_objective(self, objective_id: str) -> List[Dict[str, Any]]:
+    def get_events_for_objective(self, objective_id: str) -> list[dict[str, Any]]:
         """Retrieve all audit events for a given shopping objective."""
         return [e for e in self.events if e.get("objective_id") == objective_id]
 
@@ -106,7 +106,7 @@ class AuditTrail:
                 sort_keys=True,
                 default=str,
             )
-            expected_hash = hashlib.sha256(f"{prev}:{payload}".encode("utf-8")).hexdigest()
+            expected_hash = hashlib.sha256(f"{prev}:{payload}".encode()).hexdigest()
             if event.get("event_hash") != expected_hash or event.get("prev_hash") != prev:
                 return False
             prev = expected_hash

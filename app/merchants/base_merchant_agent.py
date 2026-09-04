@@ -13,10 +13,10 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 try:
-    import google.genai as genai
+    from google import genai
 except ImportError:
     genai = None
 
@@ -41,7 +41,7 @@ class BaseMerchantAgent:
         base_dir: Path,
         catalog_filename: str = "catalog.json",
         policy_filename: str = "policy.json",
-        base_url: Optional[str] = None,
+        base_url: str | None = None,
     ):
         self.merchant_id = merchant_id
         self.base_dir = Path(base_dir)
@@ -51,9 +51,9 @@ class BaseMerchantAgent:
 
         self.merchant_name: str = merchant_id
         self.currency: str = "INR"
-        self.products: List[Dict[str, Any]] = []
-        self.inventory: Dict[str, Item] = {}
-        self.policy: Dict[str, Any] = {}
+        self.products: list[dict[str, Any]] = []
+        self.inventory: dict[str, Item] = {}
+        self.policy: dict[str, Any] = {}
 
         self.reload_from_disk()
 
@@ -69,7 +69,7 @@ class BaseMerchantAgent:
             self.products = data.get("products", [])
 
             # Flatten variants into Item models
-            items: Dict[str, Item] = {}
+            items: dict[str, Item] = {}
             for prod in self.products:
                 pid = prod.get("product_id")
                 brand = prod.get("brand", "")
@@ -173,76 +173,29 @@ class BaseMerchantAgent:
             },
         )
 
-    def search_catalog(self, query: str = "", filters: Optional[Dict[str, Any]] = None) -> List[Item]:
-        """Internal catalog search matching structured intent (brand, category, color, size, model query)."""
+    def get_catalog(self) -> list[Item]:
+        """Returns the full catalog of items for this merchant."""
         self.reload_from_disk()
-        results = []
-        filters = filters or {}
+        return list(self.inventory.values())
 
-        # 1. Extract structured fields
-        brand_req = (filters.get("brand") or "").lower().strip()
-        color_req = (filters.get("color") or "").lower().strip()
-        size_req = filters.get("size")
-        category_req = (filters.get("category") or "").lower().strip()
-        q = query.lower().strip()
+    def search_catalog(
+        self,
+        query: str = "",
+        filters: dict[str, Any] | None = None,
+    ) -> list[Item]:
+        """Returns the complete catalog directly to the agent.
 
-        # Recognized brands and category terms
-        known_brands = {"adidas", "nike", "puma"}
-        generic_category_terms = {
-            "shoes", "shoe", "sneaker", "sneakers", "footwear", "kicks",
-            "running", "casual", "pair", "men", "mens", "women", "womens"
-        }
+        No regexes or keyword token slop: the LLM receives the full catalog
+        context to reason over all products, prices, and variants.
+        """
+        return self.get_catalog()
 
-        # Auto-extract brand from query if not specified in filters
-        if not brand_req:
-            for b in known_brands:
-                if b in q:
-                    brand_req = b
-                    break
+    def get_full_catalog(self) -> list[dict[str, Any]]:
+        """Returns the full catalog with all products, variants, prices, colors, stock, and delivery."""
+        self.reload_from_disk()
+        return [it.model_dump() for it in self.inventory.values()]
 
-        # Model query tokens: words that are neither known brands nor generic footwear terms
-        q_tokens = [
-            t for t in q.replace("-", " ").split()
-            if t not in known_brands and t not in generic_category_terms
-        ]
-
-        for item in self.inventory.values():
-            item_brand = (item.brand or "").lower()
-            item_name = (item.name or "").lower()
-            item_category = (item.attributes.get("category") or "").lower()
-            item_color = (item.attributes.get("color") or "").lower()
-            item_size = str(item.attributes.get("size", ""))
-            item_desc = (item.description or "").lower()
-
-            # 1. Brand match
-            if brand_req and brand_req not in item_brand:
-                continue
-
-            # 2. Color match
-            if color_req and color_req not in ["any", "all", ""]:
-                if color_req not in item_color:
-                    continue
-
-            # 3. Size match
-            if size_req is not None and str(size_req) not in ["", "0", "None"]:
-                if item_size != str(size_req):
-                    continue
-
-            # 4. Category match
-            if category_req and category_req not in ["footwear", "shoes", "sneakers", "any", "all"]:
-                if category_req not in item_category and category_req not in item_desc:
-                    continue
-
-            # 5. Model query tokens (e.g. "runfalcon", "revolution", "smash")
-            if q_tokens:
-                combined_text = f"{item_brand} {item_name} {item_desc}"
-                if not any(token in combined_text for token in q_tokens):
-                    continue
-
-            results.append(item)
-        return results
-
-    def get_item(self, item_id: str) -> Optional[Item]:
+    def get_item(self, item_id: str) -> Item | None:
         self.reload_from_disk()
         if item_id in self.inventory:
             return self.inventory[item_id]
@@ -255,8 +208,8 @@ class BaseMerchantAgent:
                 return it
         return None
 
-    def set_stock(self, item_id: str, new_stock: int) -> Optional[Item]:
-        """Updates stock for a product variant and persists to catalog.json."""
+    def set_stock(self, item_id: str, new_stock: int) -> Item | None:
+        """Updates stock for a product variant, persists to catalog.json, and publishes INVENTORY_CHANGED."""
         self.reload_from_disk()
         for prod in self.products:
             pid = prod.get("product_id")
@@ -268,11 +221,22 @@ class BaseMerchantAgent:
                     v["stock"] = int(new_stock)
                     self.save_catalog_to_disk()
                     self.reload_from_disk()
-                    return self.get_item(vid)
+                    item = self.get_item(vid)
+                    try:
+                        from app.modules.watch.event_bus import event_bus
+                        event_bus.publish(
+                            event_type="INVENTORY_CHANGED",
+                            merchant_id=self.merchant_id,
+                            item_id=vid,
+                            payload={"stock": int(new_stock), "price": v.get("price")},
+                        )
+                    except Exception as e:
+                        logger.warning("Failed to publish INVENTORY_CHANGED event: %s", e)
+                    return item
         return None
 
-    def set_price(self, item_id: str, new_price: float) -> Optional[Item]:
-        """Updates base price for a product variant and persists to catalog.json."""
+    def set_price(self, item_id: str, new_price: float) -> Item | None:
+        """Updates base price for a product variant, persists to catalog.json, and publishes PRICE_CHANGED."""
         self.reload_from_disk()
         for prod in self.products:
             pid = prod.get("product_id")
@@ -284,10 +248,21 @@ class BaseMerchantAgent:
                     v["price"] = float(new_price)
                     self.save_catalog_to_disk()
                     self.reload_from_disk()
-                    return self.get_item(vid)
+                    item = self.get_item(vid)
+                    try:
+                        from app.modules.watch.event_bus import event_bus
+                        event_bus.publish(
+                            event_type="PRICE_CHANGED",
+                            merchant_id=self.merchant_id,
+                            item_id=vid,
+                            payload={"price": float(new_price), "stock": v.get("stock")},
+                        )
+                    except Exception as e:
+                        logger.warning("Failed to publish PRICE_CHANGED event: %s", e)
+                    return item
         return None
 
-    def _call_merchant_llm(self, prompt: str) -> Optional[Dict[str, Any]]:
+    def _call_merchant_llm(self, prompt: str) -> dict[str, Any] | None:
         """Calls Gemini LLM to reason over the merchant's catalog and policy."""
         api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
         if not api_key or not genai:
@@ -312,8 +287,8 @@ class BaseMerchantAgent:
         return None
 
     def _evaluate_catalog_with_llm(
-        self, query: str = "", filters: Optional[Dict[str, Any]] = None
-    ) -> Optional[MerchantProposal]:
+        self, query: str = "", filters: dict[str, Any] | None = None
+    ) -> MerchantProposal | None:
         """Option A: Pure LLM Merchant Agent reasoning over complete catalog and policy."""
         filters = filters or {}
         intent_payload = {
@@ -339,14 +314,14 @@ Your Commercial Policy (Pricing, Discounts, Negotiation, Fulfillment):
 {json.dumps(self.policy, indent=2)}
 
 Instructions:
-1. Understand that all products in your store are footwear (shoes, sneakers, running, casual, kicks).
+1. Evaluate all products across footwear, t-shirts, apparel, and jackets against the customer's shopping intent.
 2. Evaluate all products and variants in your catalog against the customer's shopping intent.
 3. Select the single best product variant to propose to this customer.
 4. Calculate the base price, discount amount, and net proposed price following your discount_policy.
-5. Determine delivery capability (standard_days, express_days, express_fee) from your fulfillment_policy.
+5. Determine delivery capability from your fulfillment_policy (standard delivery days, no express bypass).
 6. Check if your negotiation_policy allows negotiation and whether this item is negotiable.
 7. If an item matches the customer's request but is currently out of stock (stock == 0), still select it and set stock=0 to provide inventory transparency.
-8. If absolutely NO product in your catalog matches the customer's requested brand or style, set "has_match": false.
+8. If NO product in your catalog matches the customer's requested product category, brand, or item type (e.g. customer requests cargo pants/pants and your store has no pants, or customer requests jackets and your store has no jackets), you MUST set "has_match": false. Do NOT substitute with an unrelated product.
 9. Craft a unique, natural commercial pitch representing {self.merchant_name}.
 
 Respond with a JSON object with this exact structure:
@@ -361,9 +336,7 @@ Respond with a JSON object with this exact structure:
   "discount_amount": 400.0,
   "proposed_price": 4899.0,
   "stock": 5,
-  "standard_delivery_days": 4,
-  "express_delivery_days": 2,
-  "express_delivery_fee": 149.0,
+  "delivery_days": 4,
   "is_negotiable": false,
   "commercial_pitch": "<pitch string>"
 }}
@@ -372,7 +345,7 @@ Respond with a JSON object with this exact structure:
         if not res_json or not res_json.get("has_match"):
             return None
 
-        # Resolve selected item in inventory
+        # Resolve selected item in inventory directly from the LLM's choice
         item_id = res_json.get("selected_item_id", "")
         item = self.get_item(item_id)
         if not item:
@@ -382,20 +355,15 @@ Respond with a JSON object with this exact structure:
                     item = it
                     break
         if not item:
-            matching = self.search_catalog(query=query, filters=filters)
-            if matching:
-                item = matching[0]
-
-        if not item:
             return None
 
         base_price = float(res_json.get("base_price", item.price))
         disc_amount = float(res_json.get("discount_amount", 0.0))
         proposed_price = float(res_json.get("proposed_price", base_price - disc_amount))
         stock = int(res_json.get("stock", item.stock))
-        std_days = int(res_json.get("standard_delivery_days", 4))
-        exp_days = int(res_json.get("express_delivery_days", 2))
-        exp_fee = float(res_json.get("express_delivery_fee", 0.0))
+        std_days = int(res_json.get("delivery_days", res_json.get("standard_delivery_days", 4)))
+        exp_days = std_days
+        exp_fee = 0.0
         is_neg = bool(res_json.get("is_negotiable", False))
         pitch = res_json.get("commercial_pitch") or f"{self.merchant_name}: Offering {item.name} for Rs. {proposed_price:,.2f}"
 
@@ -427,11 +395,35 @@ Respond with a JSON object with this exact structure:
     def _evaluate_catalog_fallback(
         self,
         query: str = "",
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> Optional[MerchantProposal]:
-        """Deterministic full-catalog proposal evaluator (used as fallback)."""
-        matching = self.search_catalog(query=query, filters=filters)
-        if not matching:
+        filters: dict[str, Any] | None = None,
+    ) -> MerchantProposal | None:
+        matching = list(self.inventory.values())
+        filters = filters or {}
+        brand_req = (filters.get("brand") or "").lower().strip()
+        color_req = (filters.get("color") or "").lower().strip()
+        size_req = filters.get("size")
+
+        if not brand_req:
+            for b in ["adidas", "nike", "puma", "asics", "reebok", "new balance", "cargolab", "poloclub", "urbanstyle", "denimco"]:
+                if b in query.lower():
+                    brand_req = b
+                    break
+
+        candidates = []
+        for it in matching:
+            if brand_req and brand_req not in it.brand.lower() and brand_req not in it.name.lower():
+                continue
+            if color_req and color_req not in ["any", "all", ""]:
+                if color_req not in (it.attributes.get("color") or "").lower():
+                    continue
+            if size_req is not None and str(size_req) not in ["", "0", "None", "any"]:
+                if str(it.attributes.get("size", "")).lower() != str(size_req).lower():
+                    continue
+            candidates.append(it)
+
+        if candidates:
+            matching = candidates
+        elif brand_req or size_req or (color_req and color_req not in ["any", "all", ""]):
             return None
 
         # Prioritize in-stock candidates, then lowest price
@@ -461,15 +453,7 @@ Respond with a JSON object with this exact structure:
         # Check discount eligibility based on inventory and rules
         eligible = False
         elig_rule = prod_discount_policy.get("eligible_if", "none")
-        if elig_rule == "any":
-            eligible = True
-        elif elig_rule == "stock_above_2" and stock > 2:
-            eligible = True
-        elif elig_rule == "stock_above_3" and stock > 3:
-            eligible = True
-        elif elig_rule == "stock_above_4" and stock > 4:
-            eligible = True
-        elif elig_rule == "stock_above_5" and stock > 5:
+        if elig_rule == "any" or elig_rule == "stock_above_2" and stock > 2 or elig_rule == "stock_above_3" and stock > 3 or elig_rule == "stock_above_4" and stock > 4 or elig_rule == "stock_above_5" and stock > 5:
             eligible = True
 
         if eligible and stock > 0:
@@ -497,9 +481,10 @@ Respond with a JSON object with this exact structure:
         proposed_price = max(base_price - disc_amount, min_price or 0.0)
 
         # Delivery terms
+        # Delivery terms (product-specific standard delivery)
         std_days = int(prod_delivery_policy.get("standard_days", 4))
-        exp_days = int(prod_delivery_policy.get("express_days", 2))
-        exp_fee = float(prod_delivery_policy.get("express_fee", 0.0))
+        exp_days = std_days
+        exp_fee = 0.0
 
         candidate.attributes["delivery"] = {
             "standard_days": std_days,
@@ -513,7 +498,7 @@ Respond with a JSON object with this exact structure:
         elif is_negotiable:
             pitch = (
                 f"{self.merchant_name}: {candidate.name} in stock ({stock} units). "
-                f"Base Rs. {base_price:,.2f} discounted to Rs. {proposed_price:,.2f} + FREE {exp_days}-day express delivery! "
+                f"Base Rs. {base_price:,.2f} discounted to Rs. {proposed_price:,.2f} ({std_days}-day delivery). "
                 f"Open to competitive counter-offers."
             )
         elif disc_amount > 0:
@@ -549,8 +534,8 @@ Respond with a JSON object with this exact structure:
     def create_proposal(
         self,
         query: str = "",
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> Optional[MerchantProposal]:
+        filters: dict[str, Any] | None = None,
+    ) -> MerchantProposal | None:
         """A2A Entry point: Formulates an ACP commercial proposal based on merchant catalog, stock, and commercial policy."""
         self.reload_from_disk()
 
@@ -570,7 +555,7 @@ Respond with a JSON object with this exact structure:
         self,
         proposal: MerchantProposal,
         competing_price: float,
-    ) -> Optional[MerchantProposal]:
+    ) -> MerchantProposal | None:
         """A2A Entry point: Evaluates buyer counter-offer against merchant commercial strategy and margin constraints."""
         self.reload_from_disk()
         neg_policy = self.policy.get("negotiation_policy", {})
@@ -588,8 +573,7 @@ Respond with a JSON object with this exact structure:
         undercut_step = float(neg_policy.get("undercut_step", 50.0))
         target_price = competing_price - undercut_step
 
-        if target_price < floor:
-            target_price = floor
+        target_price = max(target_price, floor)
 
         if target_price >= proposal.proposed_price:
             return None  # Cannot improve further
@@ -598,7 +582,7 @@ Respond with a JSON object with this exact structure:
         revised_pitch = (
             f"{self.merchant_name}: We want your business! "
             f"Beating competitor quote of Rs. {competing_price:,.2f} with a counter-offer of Rs. {target_price:,.2f} "
-            f"including FREE {proposal.express_delivery_days}-day express delivery."
+            f"with reliable {proposal.standard_delivery_days}-day delivery."
         )
 
         return MerchantProposal(
@@ -613,8 +597,8 @@ Respond with a JSON object with this exact structure:
             stock=proposal.stock,
             is_in_stock=proposal.is_in_stock,
             standard_delivery_days=proposal.standard_delivery_days,
-            express_delivery_days=proposal.express_delivery_days,
-            express_delivery_fee=proposal.express_delivery_fee,
+            express_delivery_days=proposal.standard_delivery_days,
+            express_delivery_fee=0.0,
             is_negotiable=False,
             minimum_price_floor=floor,
             commercial_pitch=revised_pitch,
@@ -624,7 +608,7 @@ Respond with a JSON object with this exact structure:
         self,
         item_id: str,
         quantity: int = 1,
-        agreed_price: Optional[float] = None,
+        agreed_price: float | None = None,
     ) -> CheckoutSession:
         """A2A Entry point: Initiates an ACP checkout session with authoritative merchant prices."""
         item = self.get_item(item_id)

@@ -1,15 +1,10 @@
 """Comprehensive End-to-End Buildathon Scenarios."""
 
-import pytest
-from app.shopping_agent.orchestrator import shopping_orchestrator
-from app.merchants import merchant_b, merchant_c
-from app.modules.watch.objective import ObjectiveStatus, ObjectiveStore, ShoppingObjective
-from app.modules.watch.event_bus import event_bus
-from app.modules.policy.engine import policy_engine
-from app.modules.razorpay.client import razorpay_client
+from adk_agents.shopping_agent.buyer_agent import run_autonomous_purchase
+from app.merchants import merchant_c
 from app.modules.audit.trail import audit_trail
 from app.modules.buyer.ledger import buyer_ledger
-from adk_agents.shopping_agent.buyer_agent import run_autonomous_purchase
+from app.shopping_agent.orchestrator import shopping_orchestrator
 
 
 def test_scenario_7_stock_exhausted_during_checkout():

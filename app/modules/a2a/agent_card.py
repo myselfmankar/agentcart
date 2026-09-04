@@ -4,14 +4,15 @@ Provides metadata schemas for discovering merchant agent capabilities,
 supported commerce protocols (ACP, AP2), and endpoint bindings.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
 class AgentSkill(BaseModel):
     name: str
     description: str
-    parameters: Dict[str, Any] = Field(default_factory=dict)
+    parameters: dict[str, Any] = Field(default_factory=dict)
 
 
 class AgentCard(BaseModel):
@@ -19,9 +20,9 @@ class AgentCard(BaseModel):
     description: str
     version: str = "1.0.0"
     url: str
-    protocols: List[str] = Field(default_factory=lambda: ["a2a", "acp", "ap2"])
-    skills: List[AgentSkill] = Field(default_factory=list)
-    provider: Dict[str, Any] = Field(default_factory=dict)
+    protocols: list[str] = Field(default_factory=lambda: ["a2a", "acp", "ap2"])
+    skills: list[AgentSkill] = Field(default_factory=list)
+    provider: dict[str, Any] = Field(default_factory=dict)
 
 
 def make_merchant_agent_card(merchant_id: str, name: str, description: str) -> AgentCard:

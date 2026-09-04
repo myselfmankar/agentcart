@@ -9,9 +9,10 @@ The Buyer Agent represents the user in commercial transactions:
 6. Produces human-readable, transparent decision reasoning.
 """
 
-from typing import Any, Dict, List, Optional
-from app.modules.acp.models import MerchantProposal
+from typing import Any
+
 from app.modules.a2a.client import a2a_client
+from app.modules.acp.models import MerchantProposal
 from app.modules.audit.trail import audit_trail
 
 
@@ -20,11 +21,11 @@ class BuyerDecision:
 
     def __init__(
         self,
-        winner_merchant: Optional[Any],
-        winning_proposal: Optional[MerchantProposal],
-        all_proposals: List[MerchantProposal],
+        winner_merchant: Any | None,
+        winning_proposal: MerchantProposal | None,
+        all_proposals: list[MerchantProposal],
         reasoning: str,
-        negotiation_rounds: List[Dict[str, Any]],
+        negotiation_rounds: list[dict[str, Any]],
     ):
         self.winner_merchant = winner_merchant
         self.winning_proposal = winning_proposal
@@ -42,7 +43,7 @@ class AIBuyerAgent:
 
     def evaluate_and_negotiate(
         self,
-        user_intent: Dict[str, Any],
+        user_intent: dict[str, Any],
         objective_id: str = "obj_default",
     ) -> BuyerDecision:
         """Discovers merchants, solicits proposals over A2A, reasons over tradeoffs, negotiates, and selects best offer."""
@@ -72,7 +73,7 @@ class AIBuyerAgent:
         }
 
         # 2. Solicit proposals over A2A
-        proposals: List[MerchantProposal] = a2a_client.request_proposals(
+        proposals: list[MerchantProposal] = a2a_client.request_proposals(
             query=query,
             filters=filters,
             objective_id=objective_id,
@@ -88,7 +89,7 @@ class AIBuyerAgent:
             )
 
         # 3. Evaluate each merchant proposal and log structured audit event
-        qualified_proposals: List[MerchantProposal] = []
+        qualified_proposals: list[MerchantProposal] = []
 
         for p in proposals:
             reasons = []

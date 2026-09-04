@@ -1,15 +1,15 @@
 """Test Autonomous Execution Loop for Buyer Agent."""
 
 import pytest
+
 from adk_agents.shopping_agent.buyer_agent import (
     buyer_agent,
-    shopping_agent,
     root_agent,
     run_autonomous_purchase,
-    check_buyer_balance,
+    shopping_agent,
 )
-from app.modules.buyer.ledger import buyer_ledger
 from app.modules.audit.trail import audit_trail
+from app.modules.buyer.ledger import buyer_ledger
 from app.modules.watch.objective import objective_store
 
 
@@ -30,7 +30,7 @@ def test_buyer_agent_composition():
     assert shopping_agent.name == "buyer_agent"
     tool_names = [t.__name__ for t in buyer_agent.tools]
     assert "run_autonomous_purchase" in tool_names
-    assert "check_buyer_balance" in tool_names
+    assert "check_buyer_balance" not in tool_names
     assert "search_merchant_proposals" not in tool_names
     assert "negotiate_with_merchant" not in tool_names
 

@@ -11,19 +11,19 @@ The Buyer Agent communicates exclusively through this client:
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
+
+from google.adk.telemetry import tracer
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
 from app.modules.a2a.agent_card import AgentCard
 from app.modules.a2a.discovery import merchant_registry
 from app.modules.acp.models import (
     AuthoritativeCheckoutToken,
     CheckoutSession,
-    Item,
     MerchantProposal,
 )
 from app.modules.audit.trail import audit_trail
-from google.adk.telemetry import tracer
-from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
 logger = logging.getLogger("a2a.client")
 
@@ -34,7 +34,7 @@ class A2AClient:
     def __init__(self, registry=None):
         self.registry = registry or merchant_registry
 
-    def discover_merchants(self, objective_id: str = "obj_default") -> List[AgentCard]:
+    def discover_merchants(self, objective_id: str = "obj_default") -> list[AgentCard]:
         """Discovers active merchant agents and retrieves their A2A Agent Cards."""
         with tracer.start_as_current_span("a2a.discover_merchants") as span:
             span.set_attribute("a2a.protocol", "A2A/1.0")
@@ -58,10 +58,10 @@ class A2AClient:
     def request_proposals(
         self,
         query: str,
-        filters: Optional[Dict[str, Any]] = None,
-        target_merchant_id: Optional[str] = None,
+        filters: dict[str, Any] | None = None,
+        target_merchant_id: str | None = None,
         objective_id: str = "obj_default",
-    ) -> List[MerchantProposal]:
+    ) -> list[MerchantProposal]:
         """Broadcasts a shopping request across A2A to merchant agents and gathers structured proposals."""
         with tracer.start_as_current_span("a2a.request_proposals") as span:
             span.set_attribute("a2a.protocol", "A2A/1.0")
@@ -83,7 +83,7 @@ class A2AClient:
                 else self.registry.list_merchants()
             )
 
-            proposals: List[MerchantProposal] = []
+            proposals: list[MerchantProposal] = []
             for merchant in merchants:
                 if not merchant:
                     continue
@@ -109,7 +109,7 @@ class A2AClient:
         proposal: MerchantProposal,
         competing_price: float,
         objective_id: str = "obj_default",
-    ) -> Optional[MerchantProposal]:
+    ) -> MerchantProposal | None:
         """Conducts an A2A 1-to-1 negotiation round with a merchant agent."""
         with tracer.start_as_current_span("a2a.negotiate") as span:
             span.set_attribute("a2a.protocol", "A2A/1.0")
@@ -119,7 +119,7 @@ class A2AClient:
             span.set_attribute("a2a.competing_price", competing_price)
 
             # Inject W3C tracecontext carrier for cross-agent propagation
-            carrier: Dict[str, str] = {}
+            carrier: dict[str, str] = {}
             try:
                 TraceContextTextMapPropagator().inject(carrier)
             except Exception:
@@ -182,9 +182,9 @@ class A2AClient:
         merchant_id: str,
         item_id: str,
         quantity: int = 1,
-        agreed_price: Optional[float] = None,
+        agreed_price: float | None = None,
         objective_id: str = "obj_default",
-    ) -> Tuple[CheckoutSession, AuthoritativeCheckoutToken]:
+    ) -> tuple[CheckoutSession, AuthoritativeCheckoutToken]:
         """Requests an authoritative ACP checkout session from the merchant over A2A."""
         with tracer.start_as_current_span("a2a.create_checkout") as span:
             span.set_attribute("a2a.protocol", "ACP/1.0")

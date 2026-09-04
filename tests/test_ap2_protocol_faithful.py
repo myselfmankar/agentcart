@@ -16,24 +16,17 @@ Validates the security and protocol invariants:
 """
 
 import time
-import pytest
+
+from app.merchants import merchant_b, merchant_c
 from app.modules.ap2.mandates import (
     authorize_user_mandates,
-    create_open_checkout_mandate,
-    create_open_payment_mandate,
-    create_closed_checkout_mandate,
     create_closed_payment_mandate,
-    create_checkout_receipt,
-    create_payment_receipt,
+    create_open_checkout_mandate,
 )
 from app.modules.ap2.verifier import deterministic_verifier
-from app.modules.policy.engine import policy_engine
-from app.merchants import merchant_b, merchant_c
 from app.modules.watch.event_bus import event_bus
 from app.modules.watch.objective import ObjectiveStatus
 from app.shopping_agent.orchestrator import shopping_orchestrator
-from app.modules.razorpay.webhooks import webhook_handler
-from app.modules.audit.trail import audit_trail
 
 
 def test_invariant_open_mandates_cryptographic_signatures():
@@ -76,7 +69,7 @@ def test_invariant_expired_open_mandate_rejected():
 
 def test_invariant_agent_cannot_exceed_open_payment_mandate():
     """Verify that a payment exceeding Open Payment Mandate is blocked deterministically."""
-    open_chk, open_pay = authorize_user_mandates({
+    _open_chk, open_pay = authorize_user_mandates({
         "description": "Budget limit test",
         "max_price": 4500.0,  # Open Payment Mandate cap is Rs. 4,500
     })
@@ -105,7 +98,7 @@ def test_invariant_agent_cannot_exceed_open_payment_mandate():
 
 def test_invariant_closed_mandate_bound_to_checkout_hash():
     """Verify checkout hash mismatch between closed mandate and authoritative checkout fails."""
-    open_chk, open_pay = authorize_user_mandates({
+    _open_chk, open_pay = authorize_user_mandates({
         "description": "Hash binding test",
         "max_price": 5000.0,
     })

@@ -9,10 +9,12 @@ Deterministically verifies AP2 mandates, hash bindings, and budget bounds:
 import hashlib
 import json
 import time
-from typing import Any, Dict, Optional
-from pydantic import BaseModel, Field
+from typing import Any
+
 from jwcrypto import jwt
-from app.modules.ap2.keys import get_agent_provider_key, get_agent_key, get_merchant_key
+from pydantic import BaseModel, Field
+
+from app.modules.ap2.keys import get_agent_key, get_agent_provider_key, get_merchant_key
 
 
 class VerificationResult(BaseModel):
@@ -20,12 +22,12 @@ class VerificationResult(BaseModel):
     code: str
     stage: str
     message: str
-    details: Dict[str, Any] = Field(default_factory=dict)
+    details: dict[str, Any] = Field(default_factory=dict)
 
     def __bool__(self) -> bool:
         return self.allowed
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return self.model_dump()
 
 
@@ -88,7 +90,7 @@ class DeterministicAP2Verifier:
     def verify_closed_checkout_mandate(
         self,
         closed_checkout_token: str,
-        open_checkout_claims: Dict[str, Any],
+        open_checkout_claims: dict[str, Any],
         authoritative_checkout_jwt: str,
     ) -> VerificationResult:
         """Verifies closed checkout mandate matches merchant hash and intent limits."""
@@ -144,7 +146,7 @@ class DeterministicAP2Verifier:
     def verify_payment_authorization(
         self,
         closed_payment_token: str,
-        open_payment_claims: Dict[str, Any],
+        open_payment_claims: dict[str, Any],
         expected_amount: float,
         expected_payee: str,
         expected_checkout_hash: str,

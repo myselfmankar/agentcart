@@ -21,45 +21,46 @@ Implements the complete AI Buyer Agent pipeline with deterministic 16-step safet
 """
 
 import uuid
-from typing import Any, Dict, List, Optional
-from app.modules.audit.trail import audit_trail
+from typing import Any
+
+from app.modules.a2a.client import a2a_client
 from app.modules.ap2.mandates import (
     authorize_user_mandates,
+    create_checkout_receipt,
     create_closed_checkout_mandate,
     create_closed_payment_mandate,
-    create_checkout_receipt,
     create_payment_receipt,
 )
 from app.modules.ap2.verifier import deterministic_verifier
-from app.modules.policy.engine import policy_engine
+from app.modules.audit.trail import audit_trail
 from app.modules.buyer.ledger import buyer_ledger
-from app.modules.a2a.client import a2a_client
+from app.modules.policy.engine import policy_engine
 from app.modules.razorpay.client import razorpay_client
-from app.shopping_agent.ai_buyer import ai_buyer_agent
+from app.modules.watch.event_bus import event_bus
 from app.modules.watch.objective import (
     ObjectiveStatus,
     ObjectiveStore,
     ShoppingObjective,
     objective_store,
 )
-from app.modules.watch.event_bus import event_bus
+from app.shopping_agent.ai_buyer import ai_buyer_agent
 
 
 class ShoppingAgentOrchestrator:
     """Coordinates autonomous shopping across merchants, policy, AP2, ACP, Buyer Ledger, and Razorpay."""
 
-    def __init__(self, store: Optional[ObjectiveStore] = None):
+    def __init__(self, store: ObjectiveStore | None = None):
         self.objective_store = store or objective_store
         event_bus.subscribe(self.handle_merchant_event)
 
     def execute_intent(
         self,
-        intent: Dict[str, Any],
+        intent: dict[str, Any],
         merchant = None,
         simulate_payment_failure: bool = False,
         enable_watching: bool = False,
-        objective_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        objective_id: str | None = None,
+    ) -> dict[str, Any]:
         """Executes a bounded autonomous shopping intent."""
         objective_id = objective_id or f"obj_{uuid.uuid4().hex[:10]}"
         objective = ShoppingObjective(objective_id=objective_id, user_intent=intent)
@@ -175,18 +176,18 @@ class ShoppingAgentOrchestrator:
     def _complete_purchase(
         self,
         objective: ShoppingObjective,
-        intent: Dict[str, Any],
-        open_checkout: Dict[str, Any],
-        open_payment: Dict[str, Any],
+        intent: dict[str, Any],
+        open_checkout: dict[str, Any],
+        open_payment: dict[str, Any],
         selected_merchant: Any,
         candidate_item: Any,
-        agreed_price: Optional[float] = None,
+        agreed_price: float | None = None,
         ai_reasoning: str = "",
-        negotiation_rounds: Optional[List[Dict[str, Any]]] = None,
-        all_proposals: Optional[List[Dict[str, Any]]] = None,
+        negotiation_rounds: list[dict[str, Any]] | None = None,
+        all_proposals: list[dict[str, Any]] | None = None,
         simulate_payment_failure: bool = False,
         enable_watching: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Executes policy checks, buyer limit checks, ACP checkout, and payment rail."""
         objective_id = objective.objective_id
         merchant_id = getattr(selected_merchant, "merchant_id", "merchant_unknown")
@@ -434,6 +435,17 @@ class ShoppingAgentOrchestrator:
             merchant_id=merchant_id,
         )
 
+        # Decrement merchant inventory for the purchased item
+        try:
+            from app.modules.a2a.discovery import merchant_registry
+            m = merchant_registry.get_merchant(merchant_id)
+            if m:
+                curr = m.get_item(candidate_item.id)
+                if curr:
+                    m.set_stock(candidate_item.id, max(0, curr.stock - 1))
+        except Exception:
+            pass
+
         result_payload = {
             "success": True,
             "status": "COMPLETED",
@@ -469,7 +481,7 @@ class ShoppingAgentOrchestrator:
         )
         return result_payload
 
-    def handle_merchant_event(self, event: Dict[str, Any]) -> None:
+    def handle_merchant_event(self, event: dict[str, Any]) -> None:
         """Processes merchant inventory/pricing/balance events and re-evaluates WATCHING objectives."""
         event_type = event.get("event_type")
         if event_type not in ["INVENTORY_CHANGED", "PRICE_CHANGED", "BALANCE_CHANGED"]:

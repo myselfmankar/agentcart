@@ -3,8 +3,10 @@
 Listens for inventory/price/balance events and notifies watching shopping objectives.
 """
 
-from typing import Any, Callable, Dict, List, Optional
 import time
+from collections.abc import Callable
+from typing import Any
+
 from app.modules.audit.trail import audit_trail
 
 
@@ -12,9 +14,9 @@ class EventBus:
     """Pub/Sub event dispatcher for commerce triggers."""
 
     def __init__(self):
-        self._listeners: List[Callable[[Dict[str, Any]], None]] = []
+        self._listeners: list[Callable[[dict[str, Any]], None]] = []
 
-    def subscribe(self, callback: Callable[[Dict[str, Any]], None]) -> None:
+    def subscribe(self, callback: Callable[[dict[str, Any]], None]) -> None:
         self._listeners.append(callback)
 
     def publish(
@@ -22,10 +24,10 @@ class EventBus:
         event_type: Any = None,
         merchant_id: str = "system",
         item_id: str = "all",
-        payload: Optional[Dict[str, Any]] = None,
+        payload: dict[str, Any] | None = None,
         objective_id: str = "system",
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Dispatches an event to all subscribers."""
         if isinstance(event_type, dict):
             event = dict(event_type)

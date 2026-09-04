@@ -8,12 +8,12 @@ Ensures Razorpay remains the definitive source of truth for payment state:
 - Updates Shopping Objective state based only on verified events
 """
 
-import hmac
 import hashlib
+import hmac
 import json
 import os
-import time
-from typing import Any, Dict, Optional, Set, Tuple
+from typing import Any
+
 from app.modules.audit.trail import audit_trail
 from app.modules.buyer.ledger import buyer_ledger
 from app.modules.watch.objective import ObjectiveStatus, objective_store
@@ -21,17 +21,16 @@ from app.modules.watch.objective import ObjectiveStatus, objective_store
 
 class WebhookVerificationError(Exception):
     """Raised when a webhook fails signature verification."""
-    pass
 
 
 class RazorpayWebhookHandler:
     """Processes asynchronous webhook notifications from Razorpay."""
 
-    def __init__(self, secret: Optional[str] = None):
+    def __init__(self, secret: str | None = None):
         self.secret = secret or os.environ.get(
             "RAZORPAY_WEBHOOK_SECRET", "whsec_mockWebhookSecret12345"
         )
-        self._processed_events: Set[str] = set()
+        self._processed_events: set[str] = set()
 
     def verify_signature(self, body_bytes: bytes, signature: str) -> bool:
         """Verifies HMAC-SHA256 signature against webhook secret."""
@@ -48,8 +47,8 @@ class RazorpayWebhookHandler:
         self,
         raw_body: bytes,
         signature: str,
-        event_id: Optional[str] = None
-    ) -> Tuple[bool, str, Dict[str, Any]]:
+        event_id: str | None = None
+    ) -> tuple[bool, str, dict[str, Any]]:
         """Validates signature, checks idempotency, debits authority once, and handles event.
         
         Returns:
@@ -93,7 +92,7 @@ class RazorpayWebhookHandler:
         amount_inr = round(float(amount_paise) / 100.0, 2)
         notes = payment_entity.get("notes", {})
         objective_id = notes.get("objective_id", "unknown")
-        merchant_id = notes.get("merchant_id", "merchant_c")
+        notes.get("merchant_id", "merchant_c")
 
         audit_trail.log_event(
             event_type="webhook.received",

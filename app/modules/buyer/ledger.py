@@ -9,7 +9,7 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from dotenv import load_dotenv
 
@@ -27,14 +27,14 @@ class BuyerLimitDecision:
     def __init__(
         self,
         allowed: bool,
-        reason: Optional[str] = None,
-        violations: Optional[List[str]] = None,
+        reason: str | None = None,
+        violations: list[str] | None = None,
         required_amount: float = 0.0,
         available_balance: float = 0.0,
         per_transaction_limit: float = 0.0,
         shortfall: float = 0.0,
         currency: str = "INR",
-        details: Optional[Dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ):
         self.allowed = allowed
         self.reason = reason
@@ -49,7 +49,7 @@ class BuyerLimitDecision:
     def __bool__(self) -> bool:
         return self.allowed
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "allowed": self.allowed,
             "status": "approved" if self.allowed else "rejected",
@@ -70,9 +70,9 @@ class BuyerLedger:
 
     def __init__(
         self,
-        data_dir: Optional[Path] = None,
-        default_balance: Optional[float] = None,
-        default_limit: Optional[float] = None,
+        data_dir: Path | None = None,
+        default_balance: float | None = None,
+        default_limit: float | None = None,
         default_currency: str = "INR",
     ):
         self.data_dir = data_dir or Path("data/buyer")
@@ -163,8 +163,8 @@ class BuyerLedger:
         amount: float,
         currency: str = "INR",
         objective_id: str = "obj_default",
-        merchant_id: Optional[str] = None,
-        checkout_id: Optional[str] = None,
+        merchant_id: str | None = None,
+        checkout_id: str | None = None,
     ) -> BuyerLimitDecision:
         """Evaluates whether the transaction satisfies per-transaction limit and available balance."""
         self._load()  # Hot-reload in case balance.json was edited externally
@@ -355,8 +355,8 @@ class BuyerLedger:
 
     def set_limits(
         self,
-        available_balance: Optional[float] = None,
-        per_transaction_limit: Optional[float] = None,
+        available_balance: float | None = None,
+        per_transaction_limit: float | None = None,
         publish_event: bool = True,
     ):
         """Sets balance or limits directly."""

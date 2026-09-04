@@ -1,3 +1,3 @@
-from merchants.merchant_c.agent.agent import merchant_agent_c, MerchantAgentC
+from merchants.merchant_c.agent.agent import MerchantAgentC, merchant_agent_c
 
-__all__ = ["merchant_agent_c", "MerchantAgentC"]
+__all__ = ["MerchantAgentC", "merchant_agent_c"]

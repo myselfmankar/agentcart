@@ -2,16 +2,16 @@
 
 from adk_agents.shopping_agent.buyer_agent import (
     buyer_agent,
-    shopping_agent,
+    check_buyer_balance,
     root_agent,
     run_autonomous_purchase,
-    check_buyer_balance,
+    shopping_agent,
 )
 
 __all__ = [
     "buyer_agent",
-    "shopping_agent",
+    "check_buyer_balance",
     "root_agent",
     "run_autonomous_purchase",
-    "check_buyer_balance",
+    "shopping_agent",
 ]

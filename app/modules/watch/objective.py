@@ -6,13 +6,15 @@ INITIAL -> SEARCHING -> EVALUATING -> WATCHING -> RE_EVALUATING -> CHECKING_OUT 
 Persists to disk (.temp-db/objectives.json) to survive agent restarts.
 """
 
-from enum import Enum
 import json
 import os
-from pathlib import Path
 import time
-from typing import Any, Dict, List, Optional
+from enum import Enum
+from pathlib import Path
+from typing import Any
+
 from pydantic import BaseModel, Field
+
 from app.modules.audit.trail import audit_trail
 
 _TEMP_DB = Path(os.environ.get("TEMP_DB_DIR", ".temp-db"))
@@ -34,15 +36,15 @@ class ObjectiveStatus(str, Enum):
 
 class ShoppingObjective(BaseModel):
     objective_id: str
-    user_intent: Dict[str, Any]
+    user_intent: dict[str, Any]
     status: ObjectiveStatus = ObjectiveStatus.INITIAL
     created_at: float = Field(default_factory=time.time)
     updated_at: float = Field(default_factory=time.time)
-    watch_reason: Optional[str] = None
-    last_event: Optional[Dict[str, Any]] = None
-    purchase_result: Optional[Dict[str, Any]] = None
+    watch_reason: str | None = None
+    last_event: dict[str, Any] | None = None
+    purchase_result: dict[str, Any] | None = None
 
-    def transition_to(self, new_status: ObjectiveStatus, reason: Optional[str] = None) -> None:
+    def transition_to(self, new_status: ObjectiveStatus, reason: str | None = None) -> None:
         old_status = self.status
         self.status = new_status
         self.updated_at = time.time()
@@ -63,9 +65,9 @@ class ShoppingObjective(BaseModel):
 class ObjectiveStore:
     """Thread-safe disk-backed persistence for Shopping Objectives."""
 
-    def __init__(self, file_path: Optional[Path] = None):
+    def __init__(self, file_path: Path | None = None):
         self.file_path = file_path or _OBJECTIVES_FILE
-        self._cache: Dict[str, ShoppingObjective] = {}
+        self._cache: dict[str, ShoppingObjective] = {}
         self._load_from_disk()
 
     def _load_from_disk(self) -> None:
@@ -98,14 +100,17 @@ class ObjectiveStore:
         self._cache[objective.objective_id] = objective
         self._save_to_disk()
 
-    def get_objective(self, objective_id: str) -> Optional[ShoppingObjective]:
+    def get_objective(self, objective_id: str) -> ShoppingObjective | None:
         return self._cache.get(objective_id)
 
-    def get_watching_objectives(self) -> List[ShoppingObjective]:
+    def get_watching_objectives(self) -> list[ShoppingObjective]:
         return [obj for obj in self._cache.values() if obj.status == ObjectiveStatus.WATCHING]
 
-    def get_awaiting_funds_objectives(self) -> List[ShoppingObjective]:
+    def get_awaiting_funds_objectives(self) -> list[ShoppingObjective]:
         return [obj for obj in self._cache.values() if obj.status == ObjectiveStatus.AWAITING_FUNDS]
+
+    def get_all_objectives(self) -> list[ShoppingObjective]:
+        return list(self._cache.values())
 
     def clear(self) -> None:
         """Clears in-memory cache and removes disk file."""

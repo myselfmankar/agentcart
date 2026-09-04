@@ -1,11 +1,10 @@
 """Tests for WATCHING state and Event-Driven Autonomous Re-evaluation."""
 
-import pytest
-from app.shopping_agent.orchestrator import shopping_orchestrator
-from app.merchants import merchant_b, merchant_c
-from app.modules.watch.objective import ObjectiveStatus, ObjectiveStore
-from app.modules.watch.event_bus import event_bus
+from app.merchants import merchant_b
 from app.modules.audit.trail import audit_trail
+from app.modules.watch.event_bus import event_bus
+from app.modules.watch.objective import ObjectiveStatus, ObjectiveStore
+from app.shopping_agent.orchestrator import shopping_orchestrator
 
 
 def test_watching_state_and_event_re_evaluation():
@@ -38,7 +37,7 @@ def test_watching_state_and_event_re_evaluation():
         merchant_b.set_stock("adidas-runfalcon-3_blue_10", 4)
 
         # Publish merchant inventory event
-        event_res = event_bus.publish(
+        event_bus.publish(
             event_type="INVENTORY_CHANGED",
             merchant_id="merchant_b",
             item_id="adidas-runfalcon-3_blue_10",

@@ -12,10 +12,12 @@ import hashlib
 import json
 import time
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any
+
+from jwcrypto import jwt
 from pydantic import BaseModel, Field
-from jwcrypto import jwt, jwk
-from app.modules.ap2.keys import get_agent_provider_key, get_agent_key, get_merchant_key
+
+from app.modules.ap2.keys import get_agent_key, get_agent_provider_key, get_merchant_key
 
 
 class MandateStatus(str):
@@ -29,16 +31,16 @@ class OpenCheckoutMandateModel(BaseModel):
     mandate_id: str
     vct: str = "https://ap2.dev/vct/open_checkout_mandate_v1"
     natural_language_description: str
-    category: Optional[str] = "shoes"
-    brand: Optional[str] = None
-    size: Optional[Any] = None
-    color: Optional[str] = None
+    category: str | None = "shoes"
+    brand: str | None = None
+    size: Any | None = None
+    color: str | None = None
     max_price: float
     currency: str = "INR"
     quantity: int = 1
-    allowed_merchants: Optional[List[str]] = None
+    allowed_merchants: list[str] | None = None
     auto_purchase: bool = True
-    cnf: Dict[str, Any]
+    cnf: dict[str, Any]
     iat: int
     exp: int
 
@@ -48,10 +50,10 @@ class OpenPaymentMandateModel(BaseModel):
     vct: str = "https://ap2.dev/vct/open_payment_mandate_v1"
     max_amount: float
     currency: str = "INR"
-    allowed_payment_methods: List[str] = Field(default_factory=lambda: ["razorpay"])
-    allowed_payees: Optional[List[str]] = None
+    allowed_payment_methods: list[str] = Field(default_factory=lambda: ["razorpay"])
+    allowed_payees: list[str] | None = None
     checkout_reference: str
-    cnf: Dict[str, Any]
+    cnf: dict[str, Any]
     iat: int
     exp: int
 
@@ -92,7 +94,7 @@ class CheckoutReceipt(BaseModel):
     merchant_id: str
     status: str = "VERIFIED"
     timestamp: float = Field(default_factory=time.time)
-    signature: Optional[str] = None
+    signature: str | None = None
 
 
 class PaymentReceipt(BaseModel):
@@ -105,7 +107,7 @@ class PaymentReceipt(BaseModel):
     currency: str
     status: str = "CAPTURED"
     timestamp: float = Field(default_factory=time.time)
-    signature: Optional[str] = None
+    signature: str | None = None
 
 
 # --- Mandate Generators & Signers ---
@@ -114,14 +116,14 @@ def create_open_checkout_mandate(
     description: str,
     max_price: float,
     currency: str = "INR",
-    brand: Optional[str] = None,
-    size: Optional[Any] = None,
-    color: Optional[str] = None,
+    brand: str | None = None,
+    size: Any | None = None,
+    color: str | None = None,
     quantity: int = 1,
-    allowed_merchants: Optional[List[str]] = None,
+    allowed_merchants: list[str] | None = None,
     auto_purchase: bool = True,
     ttl_hours: int = 24,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Generates and signs the Open Checkout Mandate representing shopping constraints."""
     provider_key = get_agent_provider_key()
     agent_key = get_agent_key()
@@ -169,9 +171,9 @@ def create_open_payment_mandate(
     open_checkout_token_hash: str,
     max_amount: float,
     currency: str = "INR",
-    allowed_merchants: Optional[List[str]] = None,
+    allowed_merchants: list[str] | None = None,
     ttl_hours: int = 24,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Generates and signs the Open Payment Mandate representing bounded payment authority."""
     provider_key = get_agent_provider_key()
     agent_key = get_agent_key()
@@ -217,7 +219,7 @@ def create_closed_checkout_mandate(
     checkout_hash: str,
     merchant_id: str,
     ttl_hours: int = 1,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Generates and signs the Closed Checkout Mandate bound to the merchant checkout hash."""
     agent_key = get_agent_key()
     mandate_id = f"closed_chk_{uuid.uuid4().hex[:12]}"
@@ -259,9 +261,9 @@ def create_closed_payment_mandate(
     payee: str,
     currency: str = "INR",
     payment_method: str = "razorpay",
-    payment_reference: Optional[str] = None,
+    payment_reference: str | None = None,
     ttl_hours: int = 1,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Generates and signs the Closed Payment Mandate bound to the finalized checkout hash."""
     agent_key = get_agent_key()
     mandate_id = f"closed_pay_{uuid.uuid4().hex[:12]}"
@@ -305,7 +307,7 @@ def create_checkout_receipt(
     mandate_id: str,
     checkout_hash: str,
     merchant_id: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Merchant signs Checkout Receipt confirming the checkout session is verified."""
     merchant_key = get_merchant_key(merchant_id)
     receipt_id = f"rcpt_chk_{uuid.uuid4().hex[:10]}"
@@ -342,7 +344,7 @@ def create_payment_receipt(
     amount: float,
     currency: str,
     merchant_id: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Issues immutable payment receipt for finalized capture."""
     merchant_key = get_merchant_key(merchant_id)
     receipt_id = f"rcpt_pay_{uuid.uuid4().hex[:10]}"
@@ -375,7 +377,7 @@ def create_payment_receipt(
     }
 
 
-def authorize_user_mandates(intent: Dict[str, Any]) -> tuple[Dict[str, Any], Dict[str, Any]]:
+def authorize_user_mandates(intent: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     """Creates bounded Open Checkout and Open Payment Mandates from user intent."""
     max_price = float(intent.get("max_price", 5000.0))
     currency = intent.get("currency", "INR")

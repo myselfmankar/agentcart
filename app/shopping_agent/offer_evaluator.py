@@ -5,9 +5,10 @@ disqualifies invalid offers with explicit explanations,
 and ranks qualifying candidates autonomously.
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
+
+from app.modules.a2a.discovery import a2a_merchant_adapter, merchant_registry
 from app.modules.acp.models import Item
-from app.modules.a2a.discovery import merchant_registry, a2a_merchant_adapter
 from app.modules.audit.trail import audit_trail
 
 
@@ -20,7 +21,7 @@ class OfferEvaluationResult:
         merchant_name: str,
         item: Item,
         is_qualified: bool,
-        rejection_reason: Optional[str] = None,
+        rejection_reason: str | None = None,
     ):
         self.merchant_id = merchant_id
         self.merchant_name = merchant_name
@@ -28,7 +29,7 @@ class OfferEvaluationResult:
         self.is_qualified = is_qualified
         self.rejection_reason = rejection_reason
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "merchant_id": self.merchant_id,
             "merchant_name": self.merchant_name,
@@ -46,9 +47,9 @@ class MultiMerchantOfferEvaluator:
 
     def evaluate_all_merchants(
         self,
-        user_intent: Dict[str, Any],
+        user_intent: dict[str, Any],
         objective_id: str = "obj_default",
-    ) -> Tuple[Optional[Tuple[Any, Item]], List[OfferEvaluationResult]]:
+    ) -> tuple[tuple[Any, Item] | None, list[OfferEvaluationResult]]:
         """Queries all merchants in registry, evaluates offers, and selects best qualifying candidate.
         
         Returns:
@@ -65,8 +66,8 @@ class MultiMerchantOfferEvaluator:
         max_budget = float(user_intent.get("max_price", float("inf")))
         required_qty = int(user_intent.get("quantity", 1))
 
-        evaluations: List[OfferEvaluationResult] = []
-        qualifying_candidates: List[Tuple[Any, Item]] = []
+        evaluations: list[OfferEvaluationResult] = []
+        qualifying_candidates: list[tuple[Any, Item]] = []
 
         audit_trail.log_event(
             event_type="MULTI_MERCHANT_QUERY_STARTED",

@@ -5,7 +5,8 @@ The deterministic policy engine must approve every transaction before checkout c
 or payment execution. No LLM output or prompt injection can bypass these constraints.
 """
 
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
+
 from app.modules.acp.models import Item
 from app.modules.audit.trail import audit_trail
 
@@ -13,7 +14,7 @@ from app.modules.audit.trail import audit_trail
 class PolicyDecision:
     """Result of a deterministic policy evaluation."""
 
-    def __init__(self, allowed: bool, violations: Optional[List[str]] = None, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, allowed: bool, violations: list[str] | None = None, details: dict[str, Any] | None = None):
         self.allowed = allowed
         self.violations = violations or []
         self.details = details or {}
@@ -21,7 +22,7 @@ class PolicyDecision:
     def __bool__(self):
         return self.allowed
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "allowed": self.allowed,
             "violations": self.violations,
@@ -33,12 +34,12 @@ class PolicyEngine:
     """Enforces deterministic constraints on candidate offers and payment actions."""
 
     def __init__(self):
-        self._processed_payment_references: Set[str] = set()
+        self._processed_payment_references: set[str] = set()
 
     def evaluate_offer(
         self,
         item: Item,
-        user_intent: Dict[str, Any],
+        user_intent: dict[str, Any],
         objective_id: str = "obj_default"
     ) -> PolicyDecision:
         """Deterministically evaluates if an offer is eligible for purchase."""
@@ -98,9 +99,15 @@ class PolicyEngine:
         # 5. Merchant whitelist constraint
         allowed_merchants = user_intent.get("allowed_merchants")
         merchant_id = item.attributes.get("merchant_id")
-        if allowed_merchants and merchant_id and merchant_id not in allowed_merchants:
+        merchant_name = item.attributes.get("merchant_name")
+        if (
+            allowed_merchants
+            and (merchant_id or merchant_name)
+            and merchant_id not in allowed_merchants
+            and merchant_name not in allowed_merchants
+        ):
             violations.append(
-                f"MERCHANT_NOT_ALLOWED: Merchant '{merchant_id}' is not in allowed list: {allowed_merchants}"
+                f"MERCHANT_NOT_ALLOWED: Merchant '{merchant_id or merchant_name}' is not in allowed list: {allowed_merchants}"
             )
 
         # 6. Currency constraint
@@ -142,7 +149,7 @@ class PolicyEngine:
         amount: float,
         authorized_max_amount: float,
         currency: str = "INR",
-        payment_reference: Optional[str] = None,
+        payment_reference: str | None = None,
         objective_id: str = "obj_default"
     ) -> PolicyDecision:
         """Deterministic safety check executed immediately prior to payment execution."""

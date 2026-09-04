@@ -4,6 +4,7 @@ Restores merchant state, buyer ledger, and objective store before each test to e
 """
 
 import pytest
+
 from app.merchants import merchant_a, merchant_b, merchant_c
 from app.merchants.repository import merchant_repository
 from app.modules.buyer.ledger import buyer_ledger

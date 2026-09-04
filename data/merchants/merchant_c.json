@@ -7,7 +7,16 @@
       "product_id": "adidas-runfalcon-3",
       "brand": "Adidas",
       "name": "Runfalcon 3",
-      "category": "running",
+      "category": "sneakers",
+      "available_sizes": [
+        9,
+        10
+      ],
+      "available_colors": [
+        "blue",
+        "black",
+        "white"
+      ],
       "variants": [
         {
           "color": "blue",
@@ -18,76 +27,80 @@
         {
           "color": "black",
           "size": 10,
-          "price": 4999,
-          "stock": 6
-        }
-      ],
-      "discount": {
-        "type": "negotiable",
-        "max_amount": 450,
-        "minimum_price": 4650,
-        "eligible_if": "stock_above_5"
-      },
-      "delivery": {
-        "standard_days": 3,
-        "express_days": 1,
-        "express_fee": 0
-      }
-    },
-    {
-      "product_id": "nike-revolution-7",
-      "brand": "Nike",
-      "name": "Revolution 7",
-      "category": "running",
-      "variants": [
-        {
-          "color": "blue",
-          "size": 10,
-          "price": 4699,
+          "price": 5199,
           "stock": 6
         },
         {
-          "color": "black",
-          "size": 10,
-          "price": 4599,
-          "stock": 8
-        }
-      ],
-      "discount": {
-        "type": "negotiable",
-        "max_amount": 300,
-        "minimum_price": 4300,
-        "eligible_if": "stock_above_4"
-      },
-      "delivery": {
-        "standard_days": 3,
-        "express_days": 1,
-        "express_fee": 0
-      }
-    },
-    {
-      "product_id": "puma-smash-v2",
-      "brand": "Puma",
-      "name": "Smash v2",
-      "category": "casual",
-      "variants": [
-        {
           "color": "white",
           "size": 10,
-          "price": 3499,
-          "stock": 10
+          "price": 5299,
+          "stock": 5
         }
+      ]
+    },
+    {
+      "product_id": "nike-dri-fit-legend",
+      "brand": "Nike",
+      "name": "Dri-FIT Legend Training Tee",
+      "category": "t-shirts",
+      "available_sizes": [
+        "M",
+        "L",
+        "XL"
       ],
-      "discount": {
-        "type": "flat",
-        "amount": 300,
-        "eligible_if": "stock_above_5"
-      },
-      "delivery": {
-        "standard_days": 2,
-        "express_days": 1,
-        "express_fee": 0
-      }
+      "available_colors": [
+        "black",
+        "blue"
+      ],
+      "variants": [
+        {
+          "color": "black",
+          "size": "L",
+          "price": 1699,
+          "stock": 9
+        },
+        {
+          "color": "blue",
+          "size": "L",
+          "price": 1699,
+          "stock": 7
+        },
+        {
+          "color": "black",
+          "size": "M",
+          "price": 1649,
+          "stock": 5
+        }
+      ]
+    },
+    {
+      "product_id": "nike-windrunner-jacket",
+      "brand": "Nike",
+      "name": "Windrunner Lightweight Running Jacket",
+      "category": "jackets",
+      "available_sizes": [
+        "M",
+        "L",
+        "XL"
+      ],
+      "available_colors": [
+        "black",
+        "navy"
+      ],
+      "variants": [
+        {
+          "color": "black",
+          "size": "L",
+          "price": 4499,
+          "stock": 4
+        },
+        {
+          "color": "navy",
+          "size": "L",
+          "price": 4699,
+          "stock": 3
+        }
+      ]
     }
   ]
 }

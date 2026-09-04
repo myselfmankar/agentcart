@@ -1,9 +1,8 @@
 """End-to-End Tests for Single Merchant Autonomous Purchase Flow."""
 
-import pytest
-from app.shopping_agent.orchestrator import shopping_orchestrator
 from app.merchants import merchant_c
 from app.modules.audit.trail import audit_trail
+from app.shopping_agent.orchestrator import shopping_orchestrator
 
 
 def test_happy_path_single_merchant():

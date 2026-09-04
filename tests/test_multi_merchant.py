@@ -2,10 +2,10 @@
 
 import json
 from pathlib import Path
-import pytest
-from app.shopping_agent.orchestrator import shopping_orchestrator
+
 from app.modules.a2a.client import a2a_client
 from app.modules.audit.trail import audit_trail
+from app.shopping_agent.orchestrator import shopping_orchestrator
 
 
 def test_multi_merchant_autonomous_selection():

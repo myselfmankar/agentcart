@@ -10,7 +10,8 @@ import logging
 import os
 import re
 import uuid
-from typing import Any, Dict, Optional
+from typing import Any
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -18,6 +19,7 @@ load_dotenv()
 logger = logging.getLogger("razorpay_client")
 
 import razorpay
+
 from app.modules.audit.trail import audit_trail
 from app.modules.razorpay.mcp_client import razorpay_mcp_client
 
@@ -27,9 +29,9 @@ class RazorpayClientAdapter:
 
     def __init__(
         self,
-        key_id: Optional[str] = None,
-        key_secret: Optional[str] = None,
-        webhook_secret: Optional[str] = None,
+        key_id: str | None = None,
+        key_secret: str | None = None,
+        webhook_secret: str | None = None,
         force_mock: bool = False,
     ):
         load_dotenv()
@@ -44,8 +46,8 @@ class RazorpayClientAdapter:
             and not self.key_id.startswith("rzp_test_mock")
         )
         self.execution_mode = "RAZORPAY_MCP" if self.is_live_mcp else "MOCK"
-        self._mock_orders: Dict[str, Dict[str, Any]] = {}
-        self._mock_payments: Dict[str, Dict[str, Any]] = {}
+        self._mock_orders: dict[str, dict[str, Any]] = {}
+        self._mock_payments: dict[str, dict[str, Any]] = {}
 
         if self.is_live_mcp:
             self.sdk_client = razorpay.Client(auth=(self.key_id, self.key_secret))
@@ -56,10 +58,10 @@ class RazorpayClientAdapter:
         self,
         amount_inr: float,
         currency: str = "INR",
-        receipt: Optional[str] = None,
-        notes: Optional[Dict[str, str]] = None,
+        receipt: str | None = None,
+        notes: dict[str, str] | None = None,
         objective_id: str = "obj_default",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Creates a Razorpay order in test mode."""
         receipt_id = receipt or f"rcpt_{uuid.uuid4().hex[:8]}"
 
@@ -102,16 +104,15 @@ class RazorpayClientAdapter:
                     level="ERROR",
                 )
                 # Fallback to local mock if remote MCP fails
-                pass
 
         # Mock order generation for test mode
         order_id = f"order_{uuid.uuid4().hex[:14]}"
         order = {
             "id": order_id,
             "entity": "order",
-            "amount": int(round(amount_inr * 100)),
+            "amount": round(amount_inr * 100),
             "amount_paid": 0,
-            "amount_due": int(round(amount_inr * 100)),
+            "amount_due": round(amount_inr * 100),
             "currency": currency,
             "receipt": receipt_id,
             "status": "created",
@@ -132,7 +133,7 @@ class RazorpayClientAdapter:
         )
         return order
 
-    def fetch_order(self, order_id: str) -> Dict[str, Any]:
+    def fetch_order(self, order_id: str) -> dict[str, Any]:
         """Fetches details of an order."""
         if self.is_live_mcp:
             try:
@@ -152,9 +153,9 @@ class RazorpayClientAdapter:
         method: str = "card",
         simulate_failure: bool = False,
         objective_id: str = "obj_default",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Executes and captures a payment against an order in test mode."""
-        amount_paise = int(round(amount_inr * 100))
+        amount_paise = round(amount_inr * 100)
 
         audit_trail.log_event(
             event_type="RAZORPAY_PAYMENT_INITIATED",
@@ -222,16 +223,16 @@ class RazorpayClientAdapter:
     def resolve_merchant_fund_account(
         self,
         merchant_id: str,
-        merchant_name: Optional[str] = None,
-        preferred_vpa: Optional[str] = None,
-    ) -> Optional[str]:
+        merchant_name: str | None = None,
+        preferred_vpa: str | None = None,
+    ) -> str | None:
         """Dynamically discovers or provisions a RazorpayX contact and fund account for a merchant.
 
         Zero hardcoding: dynamically discovers existing contacts/fund accounts on RazorpayX,
         or provisions them via API for newly onboarded merchants.
         """
         if not hasattr(self, "_fund_account_cache"):
-            self._fund_account_cache: Dict[str, str] = {}
+            self._fund_account_cache: dict[str, str] = {}
 
         if merchant_id in self._fund_account_cache:
             return self._fund_account_cache[merchant_id]
@@ -320,12 +321,12 @@ class RazorpayClientAdapter:
         self,
         merchant_id: str,
         amount_inr: float,
-        merchant_name: Optional[str] = None,
+        merchant_name: str | None = None,
         currency: str = "INR",
-        reference_id: Optional[str] = None,
+        reference_id: str | None = None,
         narration: str = "Agentic Commerce Payout",
         objective_id: str = "obj_default",
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Creates an authentic RazorpayX payout directly to the merchant's fund account."""
         if os.environ.get("PYTEST_CURRENT_TEST"):
             return None
@@ -342,7 +343,7 @@ class RazorpayClientAdapter:
             logger.warning("No fund account found or provisioned for merchant %s", merchant_id)
             return None
 
-        amount_paise = int(round(amount_inr * 100))
+        amount_paise = round(amount_inr * 100)
         ref = reference_id or f"pout_{uuid.uuid4().hex[:12]}"
         clean_narration = re.sub(r"[^a-zA-Z0-9 ]", "", narration)[:30].strip() or "Agentic Commerce"
 

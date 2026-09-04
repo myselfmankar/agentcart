@@ -8,9 +8,30 @@ Decouples observability and audit logging from core agent business logic:
 """
 
 import time
-from typing import Any, Dict, Optional
+from typing import Any
+
 from google.adk.plugins.base_plugin import BasePlugin
+
 from app.modules.audit.trail import audit_trail
+
+# Attach ACP router to FastAPI when running under adk web
+try:
+    import fastapi
+
+    from app.modules.acp.routes import acp_router
+
+    _orig_fastapi_init = fastapi.FastAPI.__init__
+
+    def _patched_fastapi_init(self, *args, **kwargs):
+        _orig_fastapi_init(self, *args, **kwargs)
+        try:
+            self.include_router(acp_router)
+        except Exception:
+            pass
+
+    fastapi.FastAPI.__init__ = _patched_fastapi_init
+except Exception:
+    pass
 
 
 class A2AAuditTracePlugin(BasePlugin):
@@ -18,7 +39,7 @@ class A2AAuditTracePlugin(BasePlugin):
 
     def __init__(self, name: str = "a2a_audit_trace_plugin"):
         super().__init__(name=name)
-        self._active_calls: Dict[str, float] = {}
+        self._active_calls: dict[str, float] = {}
 
     def _sanitize_payload(self, data: Any) -> Any:
         """Removes or masks secret keywords from logs."""
@@ -39,12 +60,12 @@ class A2AAuditTracePlugin(BasePlugin):
         self,
         *,
         tool,
-        tool_args: Dict[str, Any],
+        tool_args: dict[str, Any],
         tool_context,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Invoked immediately prior to an ADK tool being executed."""
         tool_name = getattr(tool, "name", str(tool))
-        call_id = f"{tool_name}_{time.time()}"
+        f"{tool_name}_{time.time()}"
         self._active_calls[tool_name] = time.time()
 
         objective_id = "adk_session"
@@ -67,10 +88,10 @@ class A2AAuditTracePlugin(BasePlugin):
         self,
         *,
         tool,
-        tool_args: Dict[str, Any],
+        tool_args: dict[str, Any],
         tool_context,
-        result: Dict[str, Any],
-    ) -> Optional[Dict[str, Any]]:
+        result: dict[str, Any],
+    ) -> dict[str, Any] | None:
         """Invoked immediately after an ADK tool completes execution."""
         tool_name = getattr(tool, "name", str(tool))
         start_time = self._active_calls.pop(tool_name, time.time())
@@ -104,10 +125,10 @@ class A2AAuditTracePlugin(BasePlugin):
         self,
         *,
         tool,
-        tool_args: Dict[str, Any],
+        tool_args: dict[str, Any],
         tool_context,
         error: Exception,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Invoked if an ADK tool raises an exception."""
         tool_name = getattr(tool, "name", str(tool))
         self._active_calls.pop(tool_name, None)
@@ -133,7 +154,7 @@ class A2AAuditTracePlugin(BasePlugin):
         *,
         invocation_context,
         user_message,
-    ) -> Optional[Any]:
+    ) -> Any | None:
         """Intercepts incoming user requests before dispatch to LLM."""
         text = ""
         try:
@@ -155,7 +176,7 @@ class A2AAuditTracePlugin(BasePlugin):
         *,
         invocation_context,
         event,
-    ) -> Optional[Any]:
+    ) -> Any | None:
         """Catches streaming events, tool outputs, and LLM thoughts."""
         return None
 

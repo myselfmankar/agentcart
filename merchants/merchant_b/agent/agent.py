@@ -7,7 +7,6 @@ Acts as the commercial representative for ShoeKart:
 """
 
 from pathlib import Path
-from typing import Any, Dict, Optional
 
 from app.merchants.base_merchant_agent import BaseMerchantAgent
 
@@ -15,7 +14,7 @@ from app.merchants.base_merchant_agent import BaseMerchantAgent
 class MerchantAgentB(BaseMerchantAgent):
     """Autonomous Merchant Agent for ShoeKart."""
 
-    def __init__(self, base_dir: Optional[Path] = None, base_url: Optional[str] = None):
+    def __init__(self, base_dir: Path | None = None, base_url: str | None = None):
         merchant_dir = base_dir or Path(__file__).resolve().parent.parent
         super().__init__(
             merchant_id="merchant_b",

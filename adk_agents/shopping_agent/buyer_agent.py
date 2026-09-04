@@ -10,7 +10,8 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
+
 from dotenv import load_dotenv
 
 # Ensure project root is in sys.path
@@ -38,80 +39,81 @@ if not os.getenv("GEMINI_API_KEY") and os.getenv("GOOGLE_API_KEY"):
 
 from google.adk.agents.llm_agent import Agent
 from google.adk.tools import ToolContext
-from app.modules.audit.adk_plugin import a2a_audit_plugin, A2AAuditTracePlugin
+
+from adk_agents.shopping_coordinator.agent import shopping_coordinator
+from app.modules.acp.models import Item
 from app.modules.buyer.ledger import buyer_ledger
 from app.shopping_agent.orchestrator import shopping_orchestrator
 
 
-def check_buyer_balance(tool_context: Optional[ToolContext] = None) -> Dict[str, Any]:
+def _extract_budget(text: str) -> float | None:
+    t = text.lower()
+    m_k_range = re.search(r"(\d+(?:\.\d+)?)\s*(?:k)?\s*(?:to|-)\s*(\d+(?:\.\d+)?)\s*k\b", t)
+    if m_k_range:
+        return float(m_k_range.group(2)) * 1000.0
+    m_num_range = re.search(r"(\d+)\s*(?:to|-)\s*(\d+)", t)
+    if m_num_range and float(m_num_range.group(2)) > 100:
+        return float(m_num_range.group(2))
+    m_k = re.search(r"(\d+(?:\.\d+)?)\s*k\b", t)
+    if m_k:
+        return float(m_k.group(1)) * 1000.0
+    b_match = re.search(r"(?:under|below|less than|max|budget of|around|approx|upto|up to)?\s*(?:rs\.?|inr)?\s*(\d+(?:,\d+)*(?:\.\d+)?)", t)
+    if b_match:
+        try:
+            val = float(b_match.group(1).replace(",", ""))
+            if val > 50:
+                return val
+        except Exception:
+            pass
+    return None
+
+
+def _extract_delivery_days(text: str) -> int | None:
+    m = re.search(r"(?:within|in|max|under)?\s*(\d+)\s*days?", text.lower())
+    if m:
+        return int(m.group(1))
+    return None
+
+
+def check_buyer_balance(tool_context: ToolContext | None = None) -> dict[str, Any]:
     """Returns the current buyer spending authority, available balance, and per-transaction limit."""
     buyer_ledger._load()
-    info = {
-        "available_balance": buyer_ledger.available_balance,
-        "per_transaction_limit": buyer_ledger.per_transaction_limit,
-        "currency": buyer_ledger.currency,
-    }
     if tool_context and hasattr(tool_context, "state") and tool_context.state is not None:
         try:
             tool_context.state["user:balance"] = buyer_ledger.available_balance
             tool_context.state["user:per_transaction_limit"] = buyer_ledger.per_transaction_limit
         except Exception:
             pass
-    return info
+    return {
+        "available_balance": buyer_ledger.available_balance,
+        "per_transaction_limit": buyer_ledger.per_transaction_limit,
+        "currency": buyer_ledger.currency,
+    }
 
 
 def run_autonomous_purchase(
-    query: str = "shoes",
-    brand: Optional[str] = None,
-    category: str = "footwear",
-    size: Optional[int] = 10,
-    color: Optional[str] = "blue",
-    max_budget: float = 5000.0,
-    max_delivery_days: Optional[int] = None,
+    query: str,
+    brand: str | None = None,
+    category: str | None = "footwear",
+    size: int | None = None,
+    color: str | None = None,
+    max_budget: float | None = None,
+    max_delivery_days: int | None = None,
     auto_purchase: bool = True,
-    tool_context: Optional[ToolContext] = None,
-) -> Dict[str, Any]:
-    """Executes the complete end-to-end autonomous purchasing loop as the buyer's representative.
-
-    Args:
-        query: Product or model keywords (e.g. 'shoes', 'sneakers', 'Runfalcon 3').
-        brand: Specific brand constraint if requested (e.g. 'Adidas', 'Nike', 'Puma').
-        category: Broad product category (default 'footwear').
-        size: Shoe size (e.g. 9, 10).
-        color: Color preference (e.g. 'blue', 'black', 'white').
-        max_budget: Maximum price ceiling in INR.
-        max_delivery_days: Delivery deadline in days (e.g. 2 for 'within 2 days' or 'deliver in 2 days').
-        auto_purchase: True to proceed with autonomous checkout and payment upon selection.
-        tool_context: ADK ToolContext injected by the ADK runtime.
-    """
-    if tool_context and hasattr(tool_context, "state") and tool_context.state is not None:
-        try:
-            tool_context.state["session:current_intent"] = query
-            tool_context.state["user:balance"] = buyer_ledger.available_balance
-        except Exception:
-            pass
-
-    q_lower = query.lower()
-    if not brand:
-        for b in ["adidas", "nike", "puma"]:
-            if b in q_lower:
-                brand = b.capitalize()
-                break
-    if not color:
-        for c in ["blue", "black", "white", "red"]:
-            if c in q_lower:
-                color = c
-                break
+    tool_context: ToolContext | None = None,
+) -> dict[str, Any]:
+    """Executes the complete end-to-end autonomous purchasing loop as the buyer's representative."""
     if max_delivery_days is None:
-        m = re.search(r"(\d+)\s*days?", q_lower)
-        if m:
-            max_delivery_days = int(m.group(1))
+        max_delivery_days = _extract_delivery_days(query)
+
+    if max_budget is None:
+        max_budget = _extract_budget(query) or 6000.0
 
     intent = {
         "description": f"Buy {brand or ''} {color or ''} {query} size {size or 'any'}",
         "query": query,
         "brand": brand,
-        "category": category,
+        "category": category or "footwear",
         "max_price": float(max_budget),
         "size": size,
         "color": color,
@@ -124,15 +126,13 @@ def run_autonomous_purchase(
     if tool_context and hasattr(tool_context, "state") and tool_context.state is not None:
         try:
             tool_context.state["session:current_intent"] = query
-            tool_context.state["user:balance"] = buyer_ledger.available_balance
             if result.get("success"):
-                tool_context.state["user:balance"] = result.get("remaining_balance_inr", buyer_ledger.available_balance)
-                tool_context.state["session:last_order_id"] = result.get("order_id", "")
-                tool_context.state["session:last_payment_id"] = result.get("payment_id", "")
-                tool_context.state["session:last_payout_id"] = result.get("razorpayx_payout_id", "")
                 tool_context.state["session:winning_merchant"] = result.get("merchant", "")
                 tool_context.state["session:item_purchased"] = result.get("item_purchased", "")
                 tool_context.state["session:amount_paid_inr"] = result.get("amount_paid_inr", 0.0)
+                tool_context.state["session:last_order_id"] = result.get("order_id", "")
+                tool_context.state["session:last_payment_id"] = result.get("payment_id", "")
+                tool_context.state["user:balance"] = result.get("remaining_balance_inr", 0.0)
                 tool_context.state["session:ai_reasoning"] = result.get("ai_reasoning", "")
                 tool_context.state["session:proposals"] = result.get("proposals", [])
                 tool_context.state["session:negotiation_rounds"] = result.get("negotiation_rounds", [])
@@ -142,6 +142,187 @@ def run_autonomous_purchase(
     return result
 
 
+def delegate_to_shopping_coordinator(
+    query: str,
+    brand: str | None = None,
+    category: str | None = "footwear",
+    size: int | None = None,
+    color: str | None = None,
+    max_budget: float | None = None,
+    max_delivery_days: int | None = None,
+    tool_context: ToolContext | None = None,
+) -> dict[str, Any]:
+    """Transfers the shopping search and A2A merchant negotiation task to the Shopping Coordinator."""
+    if tool_context and hasattr(tool_context, "state") and tool_context.state is not None:
+        if tool_context.state.get("session:winning_proposal"):
+            return {
+                "status": "ALREADY_COORDINATED",
+                "message": "Winning proposal has already been negotiated and selected. Call execute_autonomous_checkout to finalize payment.",
+                "winning_proposal": tool_context.state.get("session:winning_proposal"),
+            }
+
+    if max_delivery_days is None:
+        max_delivery_days = _extract_delivery_days(query)
+
+    if max_budget is None:
+        max_budget = _extract_budget(query) or 6000.0
+
+    intent = {
+        "description": f"Buy {brand or ''} {color or ''} {query} size {size or 'any'}",
+        "query": query,
+        "brand": brand,
+        "category": category or "footwear",
+        "max_price": float(max_budget),
+        "size": size,
+        "color": color,
+        "max_delivery_days": max_delivery_days,
+        "quantity": 1,
+        "auto_purchase": True,
+    }
+
+    if tool_context and hasattr(tool_context, "state") and tool_context.state is not None:
+        try:
+            tool_context.state["session:pending_intent"] = intent
+            tool_context.state["session:current_intent"] = query
+            tool_context.actions.transfer_to_agent = "shopping_coordinator"
+        except Exception:
+            pass
+
+    return {
+        "status": "DELEGATED_TO_COORDINATOR",
+        "target_agent": "shopping_coordinator",
+        "query": query,
+        "brand": brand,
+        "size": size,
+        "color": color,
+        "max_budget": max_budget,
+    }
+
+
+def execute_autonomous_checkout(
+    tool_context: ToolContext | None = None,
+) -> dict[str, Any]:
+    """Executes deterministic safety policy verification and Razorpay checkout for the winning proposal."""
+    from app.modules.a2a.client import a2a_client
+    from app.modules.policy.engine import policy_engine
+    from app.modules.razorpay.client import razorpay_client
+
+    if not tool_context or not hasattr(tool_context, "state") or tool_context.state is None:
+        return {"success": False, "status": "NO_STATE_CONTEXT", "reason": "No session state available for checkout"}
+
+    winning = tool_context.state.get("session:winning_proposal")
+    if not winning:
+        return {"success": False, "status": "NO_WINNING_PROPOSAL", "reason": "No winning merchant proposal found to checkout"}
+
+    merchant = winning.get("winning_merchant", "Unknown Merchant")
+    merchant_id = winning.get("winning_merchant_id", f"merchant_{merchant.lower()[:1]}")
+    item_title = winning.get("winning_item", "Product")
+    amount = float(winning.get("final_price_inr", 0.0))
+    sku = winning.get("winning_sku", "sku_default")
+    intent = dict(tool_context.state.get("session:pending_intent") or {})
+    max_budget = float(intent.get("max_price", amount))
+
+    # 1. Resolve authentic Item model from winning proposal
+    item_dict = winning.get("item")
+    if item_dict and isinstance(item_dict, dict):
+        purchased_item = Item(**item_dict)
+    else:
+        from app.modules.a2a.discovery import merchant_registry
+        m_agent = merchant_registry.get_merchant(merchant_id)
+        purchased_item = m_agent.get_item(sku) if m_agent else None
+
+    if not purchased_item:
+        purchased_item = Item(
+            id=sku,
+            name=item_title,
+            brand=intent.get("brand", "Unknown"),
+            category=intent.get("category", "footwear"),
+            price=amount,
+            currency="INR",
+            stock=1,
+            attributes={"size": intent.get("size"), "color": intent.get("color")},
+        )
+
+    # Allowed merchants from dynamic discovery (both names and IDs)
+    cards = a2a_client.discover_merchants()
+    allowed_merchants = []
+    for c in cards:
+        if c.name:
+            allowed_merchants.append(c.name)
+        if c.provider and c.provider.get("id"):
+            allowed_merchants.append(c.provider.get("id"))
+    if not allowed_merchants:
+        allowed_merchants = ["UrbanKicks", "ShoeKart", "FastFeet", "merchant_a", "merchant_b", "merchant_c"]
+
+    user_intent = {
+        "max_price": max_budget,
+        "quantity": 1,
+        "brand": intent.get("brand") or purchased_item.brand,
+        "size": intent.get("size"),
+        "color": intent.get("color"),
+        "allowed_merchants": allowed_merchants,
+    }
+    policy_res = policy_engine.evaluate_offer(purchased_item, user_intent=user_intent)
+    if not policy_res.allowed:
+        return {"success": False, "status": "POLICY_REJECTED", "violations": policy_res.violations}
+
+    if amount > buyer_ledger.available_balance:
+        return {"success": False, "status": "POLICY_REJECTED", "violations": ["INSUFFICIENT_BALANCE"]}
+
+    # 2. Execute Razorpay test payment / payout
+    order = razorpay_client.create_order(
+        amount_inr=amount,
+        currency="INR",
+        receipt=f"rcpt_{merchant.lower().replace(' ', '_')}",
+        notes={"merchant": merchant, "item": item_title, "sku": sku},
+    )
+    payout = razorpay_client.execute_payout(
+        merchant_id=merchant_id,
+        amount_inr=amount,
+        merchant_name=merchant,
+        narration=f"Autonomous purchase {item_title}",
+    )
+    payout_id = payout["id"] if payout else f"pout_mock_{order['id'][-8:]}"
+    payment_id = f"pay_{order['id'][6:]}"
+    buyer_ledger.record_debit(
+        transaction_id=payout_id,
+        amount=amount,
+        currency="INR",
+        merchant_id=merchant_id,
+        razorpay_order_id=order["id"],
+        razorpay_payment_id=payment_id,
+    )
+
+    # Decrement merchant inventory for the purchased item
+    try:
+        from app.modules.a2a.discovery import merchant_registry
+        m_agent = merchant_registry.get_merchant(merchant_id)
+        if m_agent:
+            curr = m_agent.get_item(sku)
+            if curr:
+                m_agent.set_stock(sku, max(0, curr.stock - 1))
+    except Exception:
+        pass
+
+    receipt = {
+        "success": True,
+        "store": merchant,
+        "item": item_title,
+        "price_paid_inr": amount,
+        "delivery": f"{winning.get('delivery_days', 1)}-day delivery",
+        "message": f"Successfully purchased {item_title} from {merchant} for Rs. {amount:,.2f}.",
+    }
+
+    try:
+        tool_context.state["session:winning_merchant"] = merchant
+        tool_context.state["session:item_purchased"] = item_title
+        tool_context.state["session:amount_paid_inr"] = amount
+    except Exception:
+        pass
+
+    return receipt
+
+
 _model = os.getenv("AGENT_MODEL", "gemini-3.5-flash-lite")
 if _model in ["gemini-3.6-flash", ""] or not _model:
     _model = "gemini-3.5-flash-lite"
@@ -149,44 +330,41 @@ if _model in ["gemini-3.6-flash", ""] or not _model:
 buyer_agent = Agent(
     name="buyer_agent",
     model=_model,
-    description="The user's autonomous purchasing representative in the multi-merchant A2A network.",
+    description="Autonomous Buyer Representative & Treasury: Manages intent, policy validation, and Razorpay checkout.",
     instruction="""You are the Autonomous Buyer Agent, representing the user in autonomous e-commerce.
 
-Core Philosophy & Tone:
-- You act as a smart, capable personal shopping assistant.
-- Keep default purchase confirmations simple, clean, and natural for a typical human user.
-- Focus on what the user cares about: the product bought, the store, the price paid, and delivery time.
-- Avoid internal developer jargon (do NOT output "Winning merchant", "AP2 Open/Closed Mandates", "Razorpay Order ID", "Payout ID", "pout_...", "pay_...", or internal balance/ledger amounts) in the default confirmation.
+Core Behavior & Minimalist Output:
+- Act as a smart personal shopping assistant.
+- Your response must be MINIMALISTIC, CLEAN, and NATURAL: 2 to 3 sentences maximum.
+- When a purchase succeeds, respond with a concise human confirmation:
+  "I have purchased the [Item Name] from [Store Name] for Rs. [Price]. Delivery is scheduled within [X] days."
 
-Execution Behavior:
-1. When the user asks to buy an item (e.g. "Buy me shoes under 5000, deliver in 2 days" or "Buy Adidas blue sneakers, size 10, under Rs. 5,000"):
-   Extract the user's constraints and execute the purchase autonomously using `run_autonomous_purchase`.
-   Upon completion, return a natural, concise confirmation message:
-   - What was ordered: Brand, item name, variant (color and size).
-   - Where it was bought from: Store/merchant name.
-   - Price paid: Total price in Rs.
-   - Delivery: Expected delivery time (e.g. express 1-day delivery).
-   - Confirmation that payment has been successfully completed.
+STRICT NEGATIVE CONSTRAINTS:
+- NEVER output markdown headings like "### Autonomous Purchase Summary" or numbered multi-section reports.
+- NEVER output AP2 Mandate IDs, closed mandate IDs, Razorpay Order IDs, Payment IDs, or Payout IDs.
+- NEVER output or mention user balance, buyer balance, or bank account balance.
+- Keep the confirmation completely human, short, and conversational.
 
-2. On follow-up questions asking for reasoning (e.g. "Why this only?", "Why did you choose FastFeet?", "Why not other stores?", "Did you negotiate?"):
-   Explain your autonomous multi-merchant decision process and A2A negotiation transparently:
-   - Detail the merchants discovered (e.g. ShoeKart, UrbanKicks, FastFeet).
-   - Explain competitor evaluation (e.g. UrbanKicks had no stock; ShoeKart offered Rs. 4,899 with 3-day delivery).
-   - Detail the A2A negotiation: FastFeet was originally listed at Rs. 5,099 (above budget), but you countered using competing market prices to negotiate them down to Rs. 4,650 (saving Rs. 449).
-   - Summarize why the final decision won: Lowest price AND fastest delivery.
-
-3. Payment Failures & Safety Policy Blocks:
-   - If payment fails or is blocked by policy, explain the plain-English reason (e.g. "The item is currently out of stock across all stores" or "The purchase was declined because the price exceeds your spending limit").
-   - Do NOT dump internal ledger calculations, balance math, or technical stack traces.
-
-4. Formatting:
-   - Format all currency figures using 'Rs.' rather than Unicode symbols, and avoid emoji icons.""",
+Execution Flow:
+1. When the user asks to buy or find an item:
+   Call `delegate_to_shopping_coordinator` passing query, brand, category, size, color, budget, and delivery deadline.
+2. When the shopping coordinator transfers back after selecting the best deal:
+   Call `execute_autonomous_checkout` to execute payment.
+   Immediately reply to the user with the 2-sentence confirmation. DO NOT call any other tool.
+3. On follow-up questions asking "Why this only?" or "Why did you choose this store?":
+   Briefly explain why this store was selected over competitors using the session proposals and negotiation.
+4. If payment fails or is out of stock, report the natural explanation in 1-2 sentences.""",
+    sub_agents=[shopping_coordinator],
     tools=[
+        delegate_to_shopping_coordinator,
+        execute_autonomous_checkout,
         run_autonomous_purchase,
-        check_buyer_balance,
     ],
 )
 
 # Canonical aliases
-shopping_agent = buyer_agent
 root_agent = buyer_agent
+shopping_agent = buyer_agent
+shopping_coordinator_agent = shopping_coordinator
+
+
