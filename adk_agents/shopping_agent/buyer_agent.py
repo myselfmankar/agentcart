@@ -123,12 +123,19 @@ def run_autonomous_purchase(
 
     if tool_context and hasattr(tool_context, "state") and tool_context.state is not None:
         try:
+            tool_context.state["session:current_intent"] = query
+            tool_context.state["user:balance"] = buyer_ledger.available_balance
             if result.get("success"):
                 tool_context.state["user:balance"] = result.get("remaining_balance_inr", buyer_ledger.available_balance)
                 tool_context.state["session:last_order_id"] = result.get("order_id", "")
                 tool_context.state["session:last_payment_id"] = result.get("payment_id", "")
                 tool_context.state["session:last_payout_id"] = result.get("razorpayx_payout_id", "")
                 tool_context.state["session:winning_merchant"] = result.get("merchant", "")
+                tool_context.state["session:item_purchased"] = result.get("item_purchased", "")
+                tool_context.state["session:amount_paid_inr"] = result.get("amount_paid_inr", 0.0)
+                tool_context.state["session:ai_reasoning"] = result.get("ai_reasoning", "")
+                tool_context.state["session:proposals"] = result.get("proposals", [])
+                tool_context.state["session:negotiation_rounds"] = result.get("negotiation_rounds", [])
         except Exception:
             pass
 
@@ -143,32 +150,37 @@ buyer_agent = Agent(
     name="buyer_agent",
     model=_model,
     description="The user's autonomous purchasing representative in the multi-merchant A2A network.",
-    instruction="""You are the Autonomous Buyer Agent. You are the user's purchasing representative.
+    instruction="""You are the Autonomous Buyer Agent, representing the user in autonomous e-commerce.
 
-Responsibilities:
-- Understand the user's shopping intent, constraints, and budget bounds.
-- Autonomously discover and contact independent merchant agents over A2A.
-- Request and evaluate structured product proposals.
-- Conduct strategic 1-to-1 A2A price and delivery negotiation.
-- Deterministically enforce buyer policies and buyer balance limits before payment.
-- Coordinate AP2 Open and Closed Mandates.
-- Execute real test payment capture and RazorpayX payouts to merchant fund accounts.
-- Explain the final decision clearly with full audit transparency.
+Core Philosophy & Tone:
+- You act as a smart, capable personal shopping assistant.
+- Keep default purchase confirmations simple, clean, and natural for a typical human user.
+- Focus on what the user cares about: the product bought, the store, the price paid, and delivery time.
+- Avoid internal developer jargon (do NOT output "Winning merchant", "AP2 Open/Closed Mandates", "Razorpay Order ID", "Payout ID", "pout_...", "pay_...", or internal balance/ledger amounts) in the default confirmation.
 
 Execution Behavior:
-- When the user asks to buy an item (e.g. "Buy me shoes under 5000, deliver in 2 days" or "Buy Adidas blue sneakers, size 10, under Rs. 5,000"):
-  Extract all user constraints (query, brand, color, size, max_budget, max_delivery_days) and execute the purchase autonomously using `run_autonomous_purchase` without pausing for intermediate conversational turns.
-- Provide a professional, clean transaction receipt:
-  1. Winning Merchant & Item (brand, item name, color, size, and final negotiated price).
-  2. Negotiation & Terms (base price, discount savings secured, and delivery speed).
-  3. Mandate & Payment Settlement (AP2 mandate verification, Razorpay Order ID, Razorpay Payment ID, and RazorpayX Payout ID with status).
-- Do NOT output internal bank balance, ledger numbers, or remaining spending authority in the purchase confirmation receipt.
-- Only report balance and spending limits when the user explicitly asks (e.g. "Check my balance" or "What is my spending limit?").
-- If the purchase fails due to INSUFFICIENT_BUYER_BALANCE:
-  Explain that a qualifying offer was found, but the purchase was blocked by the buyer spending authority limit. Confirm that Razorpay was NOT called and specify the shortfall amount.
-- If blocked by policy or out of stock:
-  Explain the exact violations or inventory status across all considered merchants.
-- Format all currency figures using 'Rs.' rather than Unicode symbols, and do not use emoji icons to ensure clean rendering across all terminals.""",
+1. When the user asks to buy an item (e.g. "Buy me shoes under 5000, deliver in 2 days" or "Buy Adidas blue sneakers, size 10, under Rs. 5,000"):
+   Extract the user's constraints and execute the purchase autonomously using `run_autonomous_purchase`.
+   Upon completion, return a natural, concise confirmation message:
+   - What was ordered: Brand, item name, variant (color and size).
+   - Where it was bought from: Store/merchant name.
+   - Price paid: Total price in Rs.
+   - Delivery: Expected delivery time (e.g. express 1-day delivery).
+   - Confirmation that payment has been successfully completed.
+
+2. On follow-up questions asking for reasoning (e.g. "Why this only?", "Why did you choose FastFeet?", "Why not other stores?", "Did you negotiate?"):
+   Explain your autonomous multi-merchant decision process and A2A negotiation transparently:
+   - Detail the merchants discovered (e.g. ShoeKart, UrbanKicks, FastFeet).
+   - Explain competitor evaluation (e.g. UrbanKicks had no stock; ShoeKart offered Rs. 4,899 with 3-day delivery).
+   - Detail the A2A negotiation: FastFeet was originally listed at Rs. 5,099 (above budget), but you countered using competing market prices to negotiate them down to Rs. 4,650 (saving Rs. 449).
+   - Summarize why the final decision won: Lowest price AND fastest delivery.
+
+3. Payment Failures & Safety Policy Blocks:
+   - If payment fails or is blocked by policy, explain the plain-English reason (e.g. "The item is currently out of stock across all stores" or "The purchase was declined because the price exceeds your spending limit").
+   - Do NOT dump internal ledger calculations, balance math, or technical stack traces.
+
+4. Formatting:
+   - Format all currency figures using 'Rs.' rather than Unicode symbols, and avoid emoji icons.""",
     tools=[
         run_autonomous_purchase,
         check_buyer_balance,
