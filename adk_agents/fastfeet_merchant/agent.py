@@ -20,9 +20,9 @@ from google.adk.agents.llm_agent import Agent
 
 from app.merchants import merchant_c
 
-_model = os.getenv("AGENT_MODEL", "gemini-2.5-flash")
+_model = os.getenv("AGENT_MODEL", "gemini-3.5-flash")
 if not _model:
-    _model = "gemini-2.5-flash"
+    _model = "gemini-3.5-flash"
 
 
 def search_fastfeet_catalog(

@@ -270,9 +270,9 @@ class BaseMerchantAgent:
 
         try:
             client = genai.Client(api_key=api_key)
-            model_name = os.getenv("AGENT_MODEL", "gemini-2.5-flash")
+            model_name = os.getenv("AGENT_MODEL", "gemini-3.5-flash")
             if not model_name:
-                model_name = "gemini-2.5-flash"
+                model_name = "gemini-3.5-flash"
 
             response = client.models.generate_content(
                 model=model_name,

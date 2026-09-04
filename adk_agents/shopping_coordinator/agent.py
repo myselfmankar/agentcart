@@ -25,9 +25,9 @@ from adk_agents.urbankicks_merchant.agent import urbankicks_merchant
 from app.merchants import merchant_a, merchant_b, merchant_c
 from app.modules.a2a.client import a2a_client
 
-_model = os.getenv("AGENT_MODEL", "gemini-2.5-flash")
+_model = os.getenv("AGENT_MODEL", "gemini-3.5-flash")
 if not _model:
-    _model = "gemini-2.5-flash"
+    _model = "gemini-3.5-flash"
 
 
 def discover_a2a_merchants() -> list[dict[str, Any]]:

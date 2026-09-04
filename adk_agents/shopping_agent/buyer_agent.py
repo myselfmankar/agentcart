@@ -323,9 +323,9 @@ def execute_autonomous_checkout(
     return receipt
 
 
-_model = os.getenv("AGENT_MODEL", "gemini-2.5-flash")
+_model = os.getenv("AGENT_MODEL", "gemini-3.5-flash")
 if not _model:
-    _model = "gemini-2.5-flash"
+    _model = "gemini-3.5-flash"
 
 buyer_agent = Agent(
     name="buyer_agent",
