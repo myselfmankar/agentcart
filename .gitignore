@@ -19,4 +19,6 @@ session.db
 *.sqlite3
 data/buyer/ledger.json
 **/data/buyer/ledger.json
+data/buyer/balance.json
+**/data/buyer/balance.json
 adk_agents/data/
