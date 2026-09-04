@@ -319,13 +319,22 @@ def execute_autonomous_checkout(
     if amount > buyer_ledger.available_balance:
         return {"success": False, "status": "POLICY_REJECTED", "violations": ["INSUFFICIENT_BALANCE"]}
 
-    # 2. Execute Razorpay test payment / payout
+    # 2. Execute Razorpay test payment / payout with Route attribution
     order = razorpay_client.create_order(
         amount_inr=amount,
         currency="INR",
         receipt=f"rcpt_{merchant.lower().replace(' ', '_')}",
         notes={"merchant": merchant, "item": item_title, "sku": sku},
+        merchant_id=merchant_id,
+        merchant_name=merchant,
     )
+    payment = razorpay_client.execute_test_payment(
+        order_id=order["id"],
+        amount_inr=amount,
+        merchant_id=merchant_id,
+        merchant_name=merchant,
+    )
+    payment_id = payment.get("id", f"pay_{order['id'][6:]}")
     payout = razorpay_client.execute_payout(
         merchant_id=merchant_id,
         amount_inr=amount,
@@ -333,7 +342,6 @@ def execute_autonomous_checkout(
         narration=f"Autonomous purchase {item_title}",
     )
     payout_id = payout["id"] if payout else f"pout_mock_{order['id'][-8:]}"
-    payment_id = f"pay_{order['id'][6:]}"
     buyer_ledger.record_debit(
         transaction_id=payout_id,
         amount=amount,
@@ -398,7 +406,7 @@ STRICT NEGATIVE CONSTRAINTS:
 Execution Flow:
 1. When the user asks to buy or find an item:
    Call `delegate_to_shopping_coordinator` passing query, brand, category, size, color, budget, and delivery deadline.
-2. When the shopping coordinator transfers back:
+2. When transferred back (from shopping_coordinator or the merchant agent):
    - If a winning proposal was negotiated (status: NEGOTIATION_COMPLETE):
      Call `execute_autonomous_checkout` to execute payment.
      Immediately reply to the user with the 2-sentence confirmation. DO NOT call any other tool.
