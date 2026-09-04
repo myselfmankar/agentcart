@@ -9,12 +9,10 @@
       "name": "Runfalcon 3",
       "category": "sneakers",
       "available_sizes": [
-        9,
         10
       ],
       "available_colors": [
-        "blue",
-        "black"
+        "blue"
       ],
       "variants": [
         {
@@ -22,18 +20,6 @@
           "size": 10,
           "price": 5299,
           "stock": 5
-        },
-        {
-          "color": "black",
-          "size": 10,
-          "price": 5399,
-          "stock": 4
-        },
-        {
-          "color": "blue",
-          "size": 9,
-          "price": 5199,
-          "stock": 3
         }
       ]
     },
@@ -43,13 +29,10 @@
       "name": "Vintage Boxy Graphic Tee",
       "category": "t-shirts",
       "available_sizes": [
-        "M",
-        "L",
-        "XL"
+        "L"
       ],
       "available_colors": [
-        "black",
-        "vintage-white"
+        "black"
       ],
       "variants": [
         {
@@ -57,18 +40,6 @@
           "size": "L",
           "price": 1799,
           "stock": 6
-        },
-        {
-          "color": "black",
-          "size": "M",
-          "price": 1799,
-          "stock": 4
-        },
-        {
-          "color": "vintage-white",
-          "size": "L",
-          "price": 1899,
-          "stock": 5
         }
       ]
     },
@@ -78,13 +49,10 @@
       "name": "Relaxed Fit Tactical Cargo Pants",
       "category": "pants",
       "available_sizes": [
-        "30",
-        "32",
-        "34"
+        "32"
       ],
       "available_colors": [
-        "olive",
-        "black"
+        "olive"
       ],
       "variants": [
         {
@@ -92,12 +60,6 @@
           "size": "32",
           "price": 2899,
           "stock": 5
-        },
-        {
-          "color": "black",
-          "size": "32",
-          "price": 2999,
-          "stock": 4
         }
       ]
     }

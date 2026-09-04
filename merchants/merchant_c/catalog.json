@@ -9,13 +9,10 @@
       "name": "Runfalcon 3",
       "category": "sneakers",
       "available_sizes": [
-        9,
         10
       ],
       "available_colors": [
-        "blue",
-        "black",
-        "white"
+        "blue"
       ],
       "variants": [
         {
@@ -23,18 +20,6 @@
           "size": 10,
           "price": 5099,
           "stock": 8
-        },
-        {
-          "color": "black",
-          "size": 10,
-          "price": 5199,
-          "stock": 6
-        },
-        {
-          "color": "white",
-          "size": 10,
-          "price": 5299,
-          "stock": 5
         }
       ]
     },
@@ -44,13 +29,10 @@
       "name": "Dri-FIT Legend Training Tee",
       "category": "t-shirts",
       "available_sizes": [
-        "M",
-        "L",
-        "XL"
+        "L"
       ],
       "available_colors": [
-        "black",
-        "blue"
+        "black"
       ],
       "variants": [
         {
@@ -58,18 +40,6 @@
           "size": "L",
           "price": 1699,
           "stock": 9
-        },
-        {
-          "color": "blue",
-          "size": "L",
-          "price": 1699,
-          "stock": 7
-        },
-        {
-          "color": "black",
-          "size": "M",
-          "price": 1649,
-          "stock": 5
         }
       ]
     },
@@ -79,13 +49,10 @@
       "name": "Windrunner Lightweight Running Jacket",
       "category": "jackets",
       "available_sizes": [
-        "M",
-        "L",
-        "XL"
+        "L"
       ],
       "available_colors": [
-        "black",
-        "navy"
+        "black"
       ],
       "variants": [
         {
@@ -93,12 +60,6 @@
           "size": "L",
           "price": 4499,
           "stock": 4
-        },
-        {
-          "color": "navy",
-          "size": "L",
-          "price": 4699,
-          "stock": 3
         }
       ]
     }

@@ -9,13 +9,10 @@
       "name": "Runfalcon 3",
       "category": "sneakers",
       "available_sizes": [
-        9,
         10
       ],
       "available_colors": [
-        "blue",
-        "black",
-        "white"
+        "blue"
       ],
       "variants": [
         {
@@ -23,18 +20,6 @@
           "size": 10,
           "price": 3800.0,
           "stock": 0
-        },
-        {
-          "color": "black",
-          "size": 10,
-          "price": 4799,
-          "stock": 2
-        },
-        {
-          "color": "white",
-          "size": 10,
-          "price": 4999,
-          "stock": 5
         }
       ]
     },
@@ -44,13 +29,10 @@
       "name": "Solid Pique Classic Polo",
       "category": "t-shirts",
       "available_sizes": [
-        "M",
-        "L",
-        "XL"
+        "L"
       ],
       "available_colors": [
-        "navy",
-        "white"
+        "navy"
       ],
       "variants": [
         {
@@ -58,18 +40,6 @@
           "size": "L",
           "price": 1299,
           "stock": 8
-        },
-        {
-          "color": "white",
-          "size": "L",
-          "price": 1299,
-          "stock": 6
-        },
-        {
-          "color": "navy",
-          "size": "M",
-          "price": 1249,
-          "stock": 4
         }
       ]
     },
@@ -79,13 +49,10 @@
       "name": "Slim Tapered Stretch Denim Jeans",
       "category": "jeans",
       "available_sizes": [
-        "30",
-        "32",
-        "34"
+        "32"
       ],
       "available_colors": [
-        "dark-blue",
-        "black"
+        "dark-blue"
       ],
       "variants": [
         {
@@ -93,12 +60,6 @@
           "size": "32",
           "price": 2199,
           "stock": 6
-        },
-        {
-          "color": "black",
-          "size": "32",
-          "price": 2299,
-          "stock": 5
         }
       ]
     }
