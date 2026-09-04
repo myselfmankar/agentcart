@@ -101,15 +101,19 @@ class ObjectiveStore:
         self._save_to_disk()
 
     def get_objective(self, objective_id: str) -> ShoppingObjective | None:
+        self._load_from_disk()
         return self._cache.get(objective_id)
 
     def get_watching_objectives(self) -> list[ShoppingObjective]:
+        self._load_from_disk()
         return [obj for obj in self._cache.values() if obj.status == ObjectiveStatus.WATCHING]
 
     def get_awaiting_funds_objectives(self) -> list[ShoppingObjective]:
+        self._load_from_disk()
         return [obj for obj in self._cache.values() if obj.status == ObjectiveStatus.AWAITING_FUNDS]
 
     def get_all_objectives(self) -> list[ShoppingObjective]:
+        self._load_from_disk()
         return list(self._cache.values())
 
     def clear(self) -> None:
