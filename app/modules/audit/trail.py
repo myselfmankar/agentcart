@@ -5,6 +5,7 @@ and money-moving operations to both structured JSONL and formatted logger output
 Ensures zero secrets/credentials are leaked into logs.
 """
 
+import hashlib
 import json
 import logging
 import os
@@ -28,6 +29,7 @@ class AuditTrail:
         self.log_path = log_path or _AUDIT_FILE
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
         self.events: List[Dict[str, Any]] = []
+        self.last_hash: str = "0" * 64
 
     def log_event(
         self,
@@ -36,7 +38,7 @@ class AuditTrail:
         details: Dict[str, Any],
         level: str = "INFO"
     ) -> Dict[str, Any]:
-        """Record an auditable action or state transition.
+        """Record an auditable action or state transition with cryptographic hash chaining.
 
         Args:
             event_type: e.g. INTENT_RECEIVED, POLICY_EVALUATED, MANDATE_CREATED,
@@ -47,14 +49,30 @@ class AuditTrail:
         """
         # Sanitize to never leak keys or credentials
         sanitized = self._sanitize(details)
+        t_now = time.time()
+        payload = json.dumps(
+            {
+                "timestamp": t_now,
+                "objective_id": objective_id,
+                "event_type": event_type,
+                "details": sanitized,
+            },
+            sort_keys=True,
+            default=str,
+        )
+        current_hash = hashlib.sha256(f"{self.last_hash}:{payload}".encode("utf-8")).hexdigest()
+
         entry = {
-            "timestamp": time.time(),
-            "iso_time": time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()),
+            "timestamp": t_now,
+            "iso_time": time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(t_now)),
             "objective_id": objective_id,
             "event_type": event_type,
             "level": level,
             "details": sanitized,
+            "prev_hash": self.last_hash,
+            "event_hash": current_hash,
         }
+        self.last_hash = current_hash
         self.events.append(entry)
 
         try:
@@ -74,9 +92,30 @@ class AuditTrail:
         """Retrieve all audit events for a given shopping objective."""
         return [e for e in self.events if e.get("objective_id") == objective_id]
 
+    def verify_integrity(self) -> bool:
+        """Verifies cryptographic SHA-256 hash chaining of all recorded events."""
+        prev = "0" * 64
+        for event in self.events:
+            payload = json.dumps(
+                {
+                    "timestamp": event["timestamp"],
+                    "objective_id": event["objective_id"],
+                    "event_type": event["event_type"],
+                    "details": event["details"],
+                },
+                sort_keys=True,
+                default=str,
+            )
+            expected_hash = hashlib.sha256(f"{prev}:{payload}".encode("utf-8")).hexdigest()
+            if event.get("event_hash") != expected_hash or event.get("prev_hash") != prev:
+                return False
+            prev = expected_hash
+        return True
+
     def clear(self) -> None:
-        """Clears in-memory events (useful for test isolation)."""
+        """Clears in-memory events and resets cryptographic hash root."""
         self.events.clear()
+        self.last_hash = "0" * 64
 
     @staticmethod
     def _sanitize(data: Any) -> Any:

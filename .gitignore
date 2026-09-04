@@ -18,3 +18,5 @@ session.db
 *.sqlite
 *.sqlite3
 data/buyer/ledger.json
+**/data/buyer/ledger.json
+adk_agents/data/

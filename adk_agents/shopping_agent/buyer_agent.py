@@ -37,18 +37,27 @@ if not os.getenv("GEMINI_API_KEY") and os.getenv("GOOGLE_API_KEY"):
     os.environ["GEMINI_API_KEY"] = os.getenv("GOOGLE_API_KEY", "")
 
 from google.adk.agents.llm_agent import Agent
+from google.adk.tools import ToolContext
+from app.modules.audit.adk_plugin import a2a_audit_plugin, A2AAuditTracePlugin
 from app.modules.buyer.ledger import buyer_ledger
 from app.shopping_agent.orchestrator import shopping_orchestrator
 
 
-def check_buyer_balance() -> Dict[str, Any]:
+def check_buyer_balance(tool_context: Optional[ToolContext] = None) -> Dict[str, Any]:
     """Returns the current buyer spending authority, available balance, and per-transaction limit."""
     buyer_ledger._load()
-    return {
+    info = {
         "available_balance": buyer_ledger.available_balance,
         "per_transaction_limit": buyer_ledger.per_transaction_limit,
         "currency": buyer_ledger.currency,
     }
+    if tool_context and hasattr(tool_context, "state") and tool_context.state is not None:
+        try:
+            tool_context.state["user:balance"] = buyer_ledger.available_balance
+            tool_context.state["user:per_transaction_limit"] = buyer_ledger.per_transaction_limit
+        except Exception:
+            pass
+    return info
 
 
 def run_autonomous_purchase(
@@ -60,6 +69,7 @@ def run_autonomous_purchase(
     max_budget: float = 5000.0,
     max_delivery_days: Optional[int] = None,
     auto_purchase: bool = True,
+    tool_context: Optional[ToolContext] = None,
 ) -> Dict[str, Any]:
     """Executes the complete end-to-end autonomous purchasing loop as the buyer's representative.
 
@@ -72,7 +82,15 @@ def run_autonomous_purchase(
         max_budget: Maximum price ceiling in INR.
         max_delivery_days: Delivery deadline in days (e.g. 2 for 'within 2 days' or 'deliver in 2 days').
         auto_purchase: True to proceed with autonomous checkout and payment upon selection.
+        tool_context: ADK ToolContext injected by the ADK runtime.
     """
+    if tool_context and hasattr(tool_context, "state") and tool_context.state is not None:
+        try:
+            tool_context.state["session:current_intent"] = query
+            tool_context.state["user:balance"] = buyer_ledger.available_balance
+        except Exception:
+            pass
+
     q_lower = query.lower()
     if not brand:
         for b in ["adidas", "nike", "puma"]:
@@ -102,6 +120,17 @@ def run_autonomous_purchase(
         "auto_purchase": auto_purchase,
     }
     result = shopping_orchestrator.execute_intent(intent=intent, enable_watching=True)
+
+    if tool_context and hasattr(tool_context, "state") and tool_context.state is not None:
+        try:
+            if result.get("success"):
+                tool_context.state["user:balance"] = result.get("remaining_balance_inr", buyer_ledger.available_balance)
+                tool_context.state["session:last_order_id"] = result.get("order_id", "")
+                tool_context.state["session:last_payment_id"] = result.get("payment_id", "")
+                tool_context.state["session:winning_merchant"] = result.get("merchant", "")
+        except Exception:
+            pass
+
     return result
 
 

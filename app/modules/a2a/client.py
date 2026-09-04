@@ -22,6 +22,8 @@ from app.modules.acp.models import (
     MerchantProposal,
 )
 from app.modules.audit.trail import audit_trail
+from google.adk.telemetry import tracer
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
 logger = logging.getLogger("a2a.client")
 
@@ -34,20 +36,24 @@ class A2AClient:
 
     def discover_merchants(self, objective_id: str = "obj_default") -> List[AgentCard]:
         """Discovers active merchant agents and retrieves their A2A Agent Cards."""
-        cards = self.registry.get_agent_cards()
-        for card in cards:
-            audit_trail.log_event(
-                event_type="merchant.discovered",
-                objective_id=objective_id,
-                details={
-                    "merchant_id": card.provider.get("id"),
-                    "merchant_name": card.name,
-                    "url": card.url,
-                    "protocols": card.protocols,
-                    "negotiable": card.provider.get("negotiable", False),
-                },
-            )
-        return cards
+        with tracer.start_as_current_span("a2a.discover_merchants") as span:
+            span.set_attribute("a2a.protocol", "A2A/1.0")
+            span.set_attribute("a2a.objective_id", objective_id)
+            cards = self.registry.get_agent_cards()
+            span.set_attribute("a2a.merchants_count", len(cards))
+            for card in cards:
+                audit_trail.log_event(
+                    event_type="merchant.discovered",
+                    objective_id=objective_id,
+                    details={
+                        "merchant_id": card.provider.get("id"),
+                        "merchant_name": card.name,
+                        "url": card.url,
+                        "protocols": card.protocols,
+                        "negotiable": card.provider.get("negotiable", False),
+                    },
+                )
+            return cards
 
     def request_proposals(
         self,
@@ -57,37 +63,45 @@ class A2AClient:
         objective_id: str = "obj_default",
     ) -> List[MerchantProposal]:
         """Broadcasts a shopping request across A2A to merchant agents and gathers structured proposals."""
-        filters = filters or {}
-        audit_trail.log_event(
-            event_type="AI_BUYER_SOLICITING_PROPOSALS",
-            objective_id=objective_id,
-            details={"query": query, "filters": filters, "target_merchant": target_merchant_id},
-        )
+        with tracer.start_as_current_span("a2a.request_proposals") as span:
+            span.set_attribute("a2a.protocol", "A2A/1.0")
+            span.set_attribute("a2a.objective_id", objective_id)
+            span.set_attribute("a2a.query", str(query))
+            if target_merchant_id:
+                span.set_attribute("a2a.target_merchant_id", target_merchant_id)
 
-        merchants = (
-            [self.registry.get_merchant(target_merchant_id)]
-            if target_merchant_id
-            else self.registry.list_merchants()
-        )
+            filters = filters or {}
+            audit_trail.log_event(
+                event_type="AI_BUYER_SOLICITING_PROPOSALS",
+                objective_id=objective_id,
+                details={"query": query, "filters": filters, "target_merchant": target_merchant_id},
+            )
 
-        proposals: List[MerchantProposal] = []
-        for merchant in merchants:
-            if not merchant:
-                continue
-            try:
-                # Dispatched over A2A interface
-                prop = merchant.create_proposal(query=query, filters=filters)
-                if prop:
-                    proposals.append(prop)
-                    audit_trail.log_event(
-                        event_type="MERCHANT_PROPOSAL_RECEIVED",
-                        objective_id=objective_id,
-                        details=prop.to_dict(),
-                    )
-            except Exception as e:
-                logger.error("Failed to fetch proposal from merchant %s: %s", getattr(merchant, "merchant_id", "unknown"), e)
+            merchants = (
+                [self.registry.get_merchant(target_merchant_id)]
+                if target_merchant_id
+                else self.registry.list_merchants()
+            )
 
-        return proposals
+            proposals: List[MerchantProposal] = []
+            for merchant in merchants:
+                if not merchant:
+                    continue
+                try:
+                    # Dispatched over A2A interface
+                    prop = merchant.create_proposal(query=query, filters=filters)
+                    if prop:
+                        proposals.append(prop)
+                        audit_trail.log_event(
+                            event_type="MERCHANT_PROPOSAL_RECEIVED",
+                            objective_id=objective_id,
+                            details=prop.to_dict(),
+                        )
+                except Exception as e:
+                    logger.error("Failed to fetch proposal from merchant %s: %s", getattr(merchant, "merchant_id", "unknown"), e)
+
+            span.set_attribute("a2a.proposals_count", len(proposals))
+            return proposals
 
     def negotiate(
         self,
@@ -97,51 +111,71 @@ class A2AClient:
         objective_id: str = "obj_default",
     ) -> Optional[MerchantProposal]:
         """Conducts an A2A 1-to-1 negotiation round with a merchant agent."""
-        merchant = self.registry.get_merchant(merchant_id)
-        if not merchant:
-            logger.warning("Negotiation target %s not found in A2A registry", merchant_id)
-            return None
+        with tracer.start_as_current_span("a2a.negotiate") as span:
+            span.set_attribute("a2a.protocol", "A2A/1.0")
+            span.set_attribute("a2a.objective_id", objective_id)
+            span.set_attribute("a2a.merchant_id", merchant_id)
+            span.set_attribute("a2a.initial_price", proposal.proposed_price)
+            span.set_attribute("a2a.competing_price", competing_price)
 
-        counter_ask = f"Competitor offers Rs. {competing_price:,.2f}. Can you improve your offer?"
-        audit_trail.log_event(
-            event_type="A2A_NEGOTIATION_COUNTER_SENT",
-            objective_id=objective_id,
-            details={
-                "merchant_id": merchant_id,
-                "current_price": proposal.proposed_price,
-                "competing_price": competing_price,
-                "counter_ask": counter_ask,
-            },
-        )
+            # Inject W3C tracecontext carrier for cross-agent propagation
+            carrier: Dict[str, str] = {}
+            try:
+                TraceContextTextMapPropagator().inject(carrier)
+            except Exception:
+                pass
 
-        # Dispatched over A2A interface
-        counter_proposal = merchant.negotiate(proposal, competing_price=competing_price)
+            merchant = self.registry.get_merchant(merchant_id)
+            if not merchant:
+                span.set_attribute("a2a.status", "MERCHANT_NOT_FOUND")
+                logger.warning("Negotiation target %s not found in A2A registry", merchant_id)
+                return None
 
-        if counter_proposal and counter_proposal.proposed_price < proposal.proposed_price:
-            savings = proposal.proposed_price - counter_proposal.proposed_price
+            counter_ask = f"Competitor offers Rs. {competing_price:,.2f}. Can you improve your offer?"
             audit_trail.log_event(
-                event_type="BUYER_NEGOTIATION_ACCEPTED",
+                event_type="A2A_NEGOTIATION_COUNTER_SENT",
                 objective_id=objective_id,
                 details={
                     "merchant_id": merchant_id,
-                    "initial_price": proposal.proposed_price,
-                    "agreed_price": counter_proposal.proposed_price,
-                    "savings": savings,
-                    "message": counter_proposal.commercial_pitch,
+                    "current_price": proposal.proposed_price,
+                    "competing_price": competing_price,
+                    "counter_ask": counter_ask,
+                    "trace_context": carrier,
                 },
             )
-            return counter_proposal
 
-        audit_trail.log_event(
-            event_type="A2A_NEGOTIATION_DECLINED",
-            objective_id=objective_id,
-            details={
-                "merchant_id": merchant_id,
-                "minimum_floor": proposal.minimum_price_floor,
-                "competing_price": competing_price,
-            },
-        )
-        return None
+            # Dispatched over A2A interface
+            counter_proposal = merchant.negotiate(proposal, competing_price=competing_price)
+
+            if counter_proposal and counter_proposal.proposed_price < proposal.proposed_price:
+                savings = proposal.proposed_price - counter_proposal.proposed_price
+                span.set_attribute("a2a.agreed_price", counter_proposal.proposed_price)
+                span.set_attribute("a2a.savings", savings)
+                span.set_attribute("a2a.status", "ACCEPTED")
+                audit_trail.log_event(
+                    event_type="BUYER_NEGOTIATION_ACCEPTED",
+                    objective_id=objective_id,
+                    details={
+                        "merchant_id": merchant_id,
+                        "initial_price": proposal.proposed_price,
+                        "agreed_price": counter_proposal.proposed_price,
+                        "savings": savings,
+                        "message": counter_proposal.commercial_pitch,
+                    },
+                )
+                return counter_proposal
+
+            span.set_attribute("a2a.status", "DECLINED")
+            audit_trail.log_event(
+                event_type="A2A_NEGOTIATION_DECLINED",
+                objective_id=objective_id,
+                details={
+                    "merchant_id": merchant_id,
+                    "minimum_floor": proposal.minimum_price_floor,
+                    "competing_price": competing_price,
+                },
+            )
+            return None
 
     def create_checkout(
         self,
@@ -152,26 +186,37 @@ class A2AClient:
         objective_id: str = "obj_default",
     ) -> Tuple[CheckoutSession, AuthoritativeCheckoutToken]:
         """Requests an authoritative ACP checkout session from the merchant over A2A."""
-        merchant = self.registry.get_merchant(merchant_id)
-        if not merchant:
-            raise ValueError(f"A2A: Merchant {merchant_id} not registered")
+        with tracer.start_as_current_span("a2a.create_checkout") as span:
+            span.set_attribute("a2a.protocol", "ACP/1.0")
+            span.set_attribute("a2a.objective_id", objective_id)
+            span.set_attribute("a2a.merchant_id", merchant_id)
+            span.set_attribute("a2a.item_id", item_id)
+            span.set_attribute("a2a.quantity", quantity)
 
-        # Dispatched over A2A interface
-        session = merchant.create_checkout(item_id=item_id, quantity=quantity, agreed_price=agreed_price)
-        auth_token = merchant.sign_authoritative_checkout(session.id)
+            merchant = self.registry.get_merchant(merchant_id)
+            if not merchant:
+                raise ValueError(f"A2A: Merchant {merchant_id} not registered")
 
-        audit_trail.log_event(
-            event_type="checkout.created",
-            objective_id=objective_id,
-            details={
-                "merchant_id": merchant_id,
-                "session_id": session.id,
-                "total_amount": session.total_amount,
-                "currency": session.currency,
-                "checkout_hash": auth_token.checkout_hash,
-            },
-        )
-        return session, auth_token
+            # Dispatched over A2A interface
+            session = merchant.create_checkout(item_id=item_id, quantity=quantity, agreed_price=agreed_price)
+            auth_token = merchant.sign_authoritative_checkout(session.id)
+
+            span.set_attribute("a2a.session_id", session.id)
+            span.set_attribute("a2a.total_amount", session.total_amount)
+            span.set_attribute("a2a.checkout_hash", auth_token.checkout_hash)
+
+            audit_trail.log_event(
+                event_type="checkout.created",
+                objective_id=objective_id,
+                details={
+                    "merchant_id": merchant_id,
+                    "session_id": session.id,
+                    "total_amount": session.total_amount,
+                    "currency": session.currency,
+                    "checkout_hash": auth_token.checkout_hash,
+                },
+            )
+            return session, auth_token
 
     def complete_checkout(
         self,
@@ -181,21 +226,28 @@ class A2AClient:
         objective_id: str = "obj_default",
     ) -> CheckoutSession:
         """Notifies the merchant agent that payment has succeeded, finalizing ACP checkout."""
-        merchant = self.registry.get_merchant(merchant_id)
-        if not merchant:
-            raise ValueError(f"A2A: Merchant {merchant_id} not registered")
+        with tracer.start_as_current_span("a2a.complete_checkout") as span:
+            span.set_attribute("a2a.protocol", "ACP/1.0")
+            span.set_attribute("a2a.objective_id", objective_id)
+            span.set_attribute("a2a.merchant_id", merchant_id)
+            span.set_attribute("a2a.session_id", session_id)
+            span.set_attribute("a2a.payment_id", payment_id)
 
-        session = merchant.complete_checkout(session_id, payment_id)
-        audit_trail.log_event(
-            event_type="checkout.completed",
-            objective_id=objective_id,
-            details={
-                "merchant_id": merchant_id,
-                "session_id": session_id,
-                "payment_id": payment_id,
-            },
-        )
-        return session
+            merchant = self.registry.get_merchant(merchant_id)
+            if not merchant:
+                raise ValueError(f"A2A: Merchant {merchant_id} not registered")
+
+            session = merchant.complete_checkout(session_id, payment_id)
+            audit_trail.log_event(
+                event_type="checkout.completed",
+                objective_id=objective_id,
+                details={
+                    "merchant_id": merchant_id,
+                    "session_id": session_id,
+                    "payment_id": payment_id,
+                },
+            )
+            return session
 
 
 # Global singleton client

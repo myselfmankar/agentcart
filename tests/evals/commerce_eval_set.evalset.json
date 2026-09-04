@@ -1,0 +1,367 @@
+{
+  "eval_set_id": "eval_agentic_commerce",
+  "name": "Autonomous Commerce Policy & Audit Verification",
+  "description": "Evaluates trajectory tool calls, argument extraction, and session state invariants.",
+  "eval_cases": [
+    {
+      "eval_id": "test_happy_path_purchase_tool_call",
+      "conversation": [
+        {
+          "invocation_id": "inv_happy_path",
+          "user_content": {
+            "parts": [
+              {
+                "media_resolution": null,
+                "code_execution_result": null,
+                "executable_code": null,
+                "file_data": null,
+                "function_call": null,
+                "function_response": null,
+                "inline_data": null,
+                "text": "Buy Adidas blue sneakers, size 10, under Rs. 5000",
+                "thought": null,
+                "thought_signature": null,
+                "video_metadata": null,
+                "tool_call": null,
+                "tool_response": null,
+                "part_metadata": null,
+                "audio_transcription": null,
+                "media_processing": null
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "media_resolution": null,
+                "code_execution_result": null,
+                "executable_code": null,
+                "file_data": null,
+                "function_call": null,
+                "function_response": null,
+                "inline_data": null,
+                "text": "Autonomous purchase completed successfully.",
+                "thought": null,
+                "thought_signature": null,
+                "video_metadata": null,
+                "tool_call": null,
+                "tool_response": null,
+                "part_metadata": null,
+                "audio_transcription": null,
+                "media_processing": null
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "id": null,
+                "args": {
+                  "query": "shoes",
+                  "brand": "Adidas",
+                  "size": 10,
+                  "color": "blue",
+                  "max_budget": 5000.0
+                },
+                "name": "run_autonomous_purchase",
+                "partial_args": null,
+                "will_continue": null
+              }
+            ],
+            "tool_responses": [],
+            "intermediate_responses": []
+          },
+          "creation_timestamp": 1788500909.8934758,
+          "rubrics": null,
+          "app_details": null
+        }
+      ],
+      "conversation_scenario": null,
+      "session_input": {
+        "app_name": "shopping_agent",
+        "user_id": "buyer_user",
+        "session_id": null,
+        "state": {
+          "user:balance": 10000.0
+        }
+      },
+      "creation_timestamp": 0.0,
+      "rubrics": null,
+      "final_session_state": {
+        "user:balance": 5500.0,
+        "session:winning_merchant": "merch_fastfeet"
+      }
+    },
+    {
+      "eval_id": "test_delivery_deadline_extraction",
+      "conversation": [
+        {
+          "invocation_id": "inv_delivery_deadline",
+          "user_content": {
+            "parts": [
+              {
+                "media_resolution": null,
+                "code_execution_result": null,
+                "executable_code": null,
+                "file_data": null,
+                "function_call": null,
+                "function_response": null,
+                "inline_data": null,
+                "text": "Buy Nike running shoes size 10 under 4000 deliver in 2 days",
+                "thought": null,
+                "thought_signature": null,
+                "video_metadata": null,
+                "tool_call": null,
+                "tool_response": null,
+                "part_metadata": null,
+                "audio_transcription": null,
+                "media_processing": null
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "media_resolution": null,
+                "code_execution_result": null,
+                "executable_code": null,
+                "file_data": null,
+                "function_call": null,
+                "function_response": null,
+                "inline_data": null,
+                "text": "Order processed with 2-day delivery constraint.",
+                "thought": null,
+                "thought_signature": null,
+                "video_metadata": null,
+                "tool_call": null,
+                "tool_response": null,
+                "part_metadata": null,
+                "audio_transcription": null,
+                "media_processing": null
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "id": null,
+                "args": {
+                  "query": "shoes",
+                  "brand": "Nike",
+                  "size": 10,
+                  "max_budget": 4000.0,
+                  "max_delivery_days": 2
+                },
+                "name": "run_autonomous_purchase",
+                "partial_args": null,
+                "will_continue": null
+              }
+            ],
+            "tool_responses": [],
+            "intermediate_responses": []
+          },
+          "creation_timestamp": 1788500909.8934758,
+          "rubrics": null,
+          "app_details": null
+        }
+      ],
+      "conversation_scenario": null,
+      "session_input": {
+        "app_name": "shopping_agent",
+        "user_id": "buyer_user",
+        "session_id": null,
+        "state": {
+          "user:balance": 10000.0
+        }
+      },
+      "creation_timestamp": 0.0,
+      "rubrics": null,
+      "final_session_state": {
+        "user:balance": 6200.0
+      }
+    },
+    {
+      "eval_id": "test_overbudget_rejection_state_invariant",
+      "conversation": [
+        {
+          "invocation_id": "inv_overbudget",
+          "user_content": {
+            "parts": [
+              {
+                "media_resolution": null,
+                "code_execution_result": null,
+                "executable_code": null,
+                "file_data": null,
+                "function_call": null,
+                "function_response": null,
+                "inline_data": null,
+                "text": "Buy Nike running shoes size 10 under Rs. 1500",
+                "thought": null,
+                "thought_signature": null,
+                "video_metadata": null,
+                "tool_call": null,
+                "tool_response": null,
+                "part_metadata": null,
+                "audio_transcription": null,
+                "media_processing": null
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "media_resolution": null,
+                "code_execution_result": null,
+                "executable_code": null,
+                "file_data": null,
+                "function_call": null,
+                "function_response": null,
+                "inline_data": null,
+                "text": "Order rejected: No qualifying offer within budget ceiling.",
+                "thought": null,
+                "thought_signature": null,
+                "video_metadata": null,
+                "tool_call": null,
+                "tool_response": null,
+                "part_metadata": null,
+                "audio_transcription": null,
+                "media_processing": null
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "id": null,
+                "args": {
+                  "query": "shoes",
+                  "brand": "Nike",
+                  "size": 10,
+                  "max_budget": 1500.0
+                },
+                "name": "run_autonomous_purchase",
+                "partial_args": null,
+                "will_continue": null
+              }
+            ],
+            "tool_responses": [],
+            "intermediate_responses": []
+          },
+          "creation_timestamp": 1788500909.8934758,
+          "rubrics": null,
+          "app_details": null
+        }
+      ],
+      "conversation_scenario": null,
+      "session_input": {
+        "app_name": "shopping_agent",
+        "user_id": "buyer_user",
+        "session_id": null,
+        "state": {
+          "user:balance": 10000.0
+        }
+      },
+      "creation_timestamp": 0.0,
+      "rubrics": null,
+      "final_session_state": {
+        "user:balance": 10000.0
+      }
+    },
+    {
+      "eval_id": "test_insufficient_balance_rejection_invariant",
+      "conversation": [
+        {
+          "invocation_id": "inv_insufficient_bal",
+          "user_content": {
+            "parts": [
+              {
+                "media_resolution": null,
+                "code_execution_result": null,
+                "executable_code": null,
+                "file_data": null,
+                "function_call": null,
+                "function_response": null,
+                "inline_data": null,
+                "text": "Buy Adidas shoes size 10 under 60000",
+                "thought": null,
+                "thought_signature": null,
+                "video_metadata": null,
+                "tool_call": null,
+                "tool_response": null,
+                "part_metadata": null,
+                "audio_transcription": null,
+                "media_processing": null
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "media_resolution": null,
+                "code_execution_result": null,
+                "executable_code": null,
+                "file_data": null,
+                "function_call": null,
+                "function_response": null,
+                "inline_data": null,
+                "text": "Transaction blocked: Exceeds buyer balance authority.",
+                "thought": null,
+                "thought_signature": null,
+                "video_metadata": null,
+                "tool_call": null,
+                "tool_response": null,
+                "part_metadata": null,
+                "audio_transcription": null,
+                "media_processing": null
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "id": null,
+                "args": {
+                  "query": "shoes",
+                  "brand": "Adidas",
+                  "size": 10,
+                  "max_budget": 60000.0
+                },
+                "name": "run_autonomous_purchase",
+                "partial_args": null,
+                "will_continue": null
+              }
+            ],
+            "tool_responses": [],
+            "intermediate_responses": []
+          },
+          "creation_timestamp": 1788500909.8934758,
+          "rubrics": null,
+          "app_details": null
+        }
+      ],
+      "conversation_scenario": null,
+      "session_input": {
+        "app_name": "shopping_agent",
+        "user_id": "buyer_user",
+        "session_id": null,
+        "state": {
+          "user:balance": 10000.0
+        }
+      },
+      "creation_timestamp": 0.0,
+      "rubrics": null,
+      "final_session_state": {
+        "user:balance": 10000.0
+      }
+    }
+  ],
+  "creation_timestamp": 1725429600.0
+}
