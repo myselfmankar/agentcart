@@ -6,7 +6,8 @@ ap2_a2a_sample_code
 *.egg-info
 __pycache__
 *.pyc
-
+.pytest_cache
+.ruff_cache
 secrets.txt
 
 # ADK and Database files
