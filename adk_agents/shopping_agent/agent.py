@@ -10,6 +10,7 @@ if str(_ROOT) not in sys.path:
 from .buyer_agent import (
     buyer_agent,
     check_buyer_balance,
+    check_order_or_watch_status,
     delegate_to_shopping_coordinator,
     execute_autonomous_checkout,
     root_agent,
@@ -23,6 +24,7 @@ execute_autonomous_shopping_intent = run_autonomous_purchase
 __all__ = [
     "buyer_agent",
     "check_buyer_balance",
+    "check_order_or_watch_status",
     "delegate_to_shopping_coordinator",
     "execute_autonomous_checkout",
     "execute_autonomous_shopping_intent",

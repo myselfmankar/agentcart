@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 from app.merchants import merchant_a, merchant_b, merchant_c
 from app.modules.watch.objective import objective_store
+from app.shopping_agent.orchestrator import shopping_orchestrator
 
 MERCHANTS = {
     "merchant_a": merchant_a,
@@ -73,6 +74,16 @@ def update_stock_single(req: StockSingleRequest):
     item = m.set_stock(req.sku, req.stock)
     if not item:
         raise HTTPException(status_code=404, detail="SKU not found")
+    # Trigger autonomous re-evaluation of watching objectives
+    try:
+        shopping_orchestrator.handle_merchant_event({
+            "event_type": "INVENTORY_CHANGED",
+            "merchant_id": m.merchant_id,
+            "item_id": req.sku,
+            "payload": {"stock": req.stock},
+        })
+    except Exception as e:
+        pass
     return {"success": True, "merchant": m.merchant_name, "sku": req.sku, "stock": req.stock}
 
 
@@ -86,6 +97,15 @@ def update_stock_batch(req: StockBatchRequest):
         res = m.set_stock(it.sku, it.stock)
         if res:
             updated.append({"sku": it.sku, "stock": it.stock})
+            try:
+                shopping_orchestrator.handle_merchant_event({
+                    "event_type": "INVENTORY_CHANGED",
+                    "merchant_id": m.merchant_id,
+                    "item_id": it.sku,
+                    "payload": {"stock": it.stock},
+                })
+            except Exception as e:
+                pass
     return {"success": True, "merchant": m.merchant_name, "updated_count": len(updated)}
 
 
@@ -349,7 +369,7 @@ def get_dashboard():
     // Initial load
     loadMerchants();
     loadObjectives();
-    setInterval(loadObjectives, 2000);
+    setInterval(loadObjectives, 10000);
   </script>
 </body>
 </html>

@@ -75,6 +75,47 @@ def _extract_delivery_days(text: str) -> int | None:
     return None
 
 
+def _extract_size(text: str) -> int | None:
+    m = re.search(r"\bsize\s*[:=]?\s*(\d+)\b", text.lower())
+    if m:
+        try:
+            return int(m.group(1))
+        except Exception:
+            pass
+    return None
+
+
+def _extract_color(text: str) -> str | None:
+    for c in ["blue", "black", "white", "red", "green", "grey", "gray", "navy"]:
+        if re.search(rf"\b{c}\b", text.lower()):
+            return c
+    return None
+
+
+def _extract_brand(text: str) -> str | None:
+    for b in ["adidas", "nike", "puma", "asics", "reebok"]:
+        if re.search(rf"\b{b}\b", text.lower()):
+            return b
+    return None
+
+
+def check_order_or_watch_status(tool_context: ToolContext | None = None) -> dict[str, Any]:
+    """Checks the live status of any active or completed shopping/watch objectives."""
+    from app.modules.watch.objective import objective_store
+
+    objs = objective_store.get_all_objectives()
+    if not objs:
+        return {"status": "NO_OBJECTIVES", "message": "No active or past shopping objectives found."}
+    latest = objs[-1]
+    return {
+        "status": latest.status.value,
+        "objective_id": latest.objective_id,
+        "intent": latest.user_intent,
+        "reason": latest.watch_reason,
+        "purchase_result": latest.purchase_result,
+    }
+
+
 def check_buyer_balance(tool_context: ToolContext | None = None) -> dict[str, Any]:
     """Returns the current buyer spending authority, available balance, and per-transaction limit."""
     buyer_ledger._load()
@@ -166,6 +207,15 @@ def delegate_to_shopping_coordinator(
 
     if max_budget is None:
         max_budget = _extract_budget(query) or 6000.0
+
+    if size is None:
+        size = _extract_size(query)
+
+    if color is None:
+        color = _extract_color(query)
+
+    if brand is None:
+        brand = _extract_brand(query)
 
     intent = {
         "description": f"Buy {brand or ''} {color or ''} {query} size {size or 'any'}",
@@ -348,17 +398,23 @@ STRICT NEGATIVE CONSTRAINTS:
 Execution Flow:
 1. When the user asks to buy or find an item:
    Call `delegate_to_shopping_coordinator` passing query, brand, category, size, color, budget, and delivery deadline.
-2. When the shopping coordinator transfers back after selecting the best deal:
-   Call `execute_autonomous_checkout` to execute payment.
-   Immediately reply to the user with the 2-sentence confirmation. DO NOT call any other tool.
-3. On follow-up questions asking "Why this only?" or "Why did you choose this store?":
+2. When the shopping coordinator transfers back:
+   - If a winning proposal was negotiated (status: NEGOTIATION_COMPLETE):
+     Call `execute_autonomous_checkout` to execute payment.
+     Immediately reply to the user with the 2-sentence confirmation. DO NOT call any other tool.
+   - If placed in WATCHING state (status: WATCHING):
+     Reply cleanly to the user in 2 sentences explaining that no store currently meets their price or stock requirement (mention which store is out of stock or above budget), and confirm that you have placed the request on WATCH and will automatically buy it when stock arrives or the price drops. DO NOT call checkout.
+3. If the user asks about the status of an order or watch (e.g. "Did you buy it?", "Any updates?"):
+   Call `check_order_or_watch_status` and report the current status clearly in 1-2 sentences.
+4. On follow-up questions asking "Why this only?" or "Why did you choose this store?":
    Briefly explain why this store was selected over competitors using the session proposals and negotiation.
-4. If payment fails or is out of stock, report the natural explanation in 1-2 sentences.""",
+5. If payment fails, report the natural explanation in 1-2 sentences.""",
     sub_agents=[shopping_coordinator],
     tools=[
         delegate_to_shopping_coordinator,
         execute_autonomous_checkout,
         run_autonomous_purchase,
+        check_order_or_watch_status,
     ],
 )
 

@@ -99,8 +99,34 @@ def coordinate_merchant_proposals_and_negotiate(
     decision = ai_buyer_agent.evaluate_and_negotiate(user_intent=intent)
 
     if not decision.is_successful:
+        import time
+        import uuid
+        from app.modules.watch.objective import ObjectiveStatus, ShoppingObjective, objective_store
+
+        obj_id = f"obj_{uuid.uuid4().hex[:8]}"
+        objective = ShoppingObjective(
+            objective_id=obj_id,
+            user_intent=intent,
+            status=ObjectiveStatus.WATCHING,
+            watch_reason=decision.reasoning or "No qualifying offers currently exist within budget/stock. Placed in WATCHING mode.",
+            created_at=time.time(),
+            updated_at=time.time(),
+        )
+        objective_store.save_objective(objective)
+
+        if tool_context and hasattr(tool_context, "state") and tool_context.state is not None:
+            try:
+                tool_context.state["session:watching_objective_id"] = obj_id
+                tool_context.state["session:watch_status"] = "WATCHING"
+                tool_context.state["session:watch_reason"] = decision.reasoning
+                tool_context.actions.transfer_to_agent = "buyer_agent"
+            except Exception:
+                pass
+
         return {
-            "status": "NO_QUALIFIED_OFFERS",
+            "status": "WATCHING",
+            "objective_id": obj_id,
+            "message": "No qualifying offer currently exists within budget or stock. Shopping objective placed in WATCHING state.",
             "reasoning": decision.reasoning,
             "proposals": [p.to_dict() for p in decision.all_proposals],
         }
