@@ -77,23 +77,6 @@ def get_fastfeet_info() -> dict[str, Any]:
     }
 
 
-def transfer_to_buyer_agent(
-    confirmation: str,
-    tool_context: ToolContext | None = None,
-) -> dict[str, Any]:
-    """Confirms store availability or proposal and transfers control to buyer_agent."""
-    if tool_context and hasattr(tool_context, "actions") and tool_context.actions is not None:
-        try:
-            tool_context.actions.transfer_to_agent = "buyer_agent"
-        except Exception:
-            pass
-    return {
-        "status": "TRANSFERRED_TO_BUYER",
-        "merchant": "FastFeet",
-        "confirmation": confirmation,
-    }
-
-
 fastfeet_merchant = Agent(
     name="fastfeet_merchant",
     model=_model,
@@ -101,10 +84,9 @@ fastfeet_merchant = Agent(
     instruction="""You are the autonomous sales agent for FastFeet.
 Your catalog offers premium athletic footwear with 1-day express delivery.
 You evaluate customer and A2A price counter-offers dynamically down to your confidential floor price.
-When transferred to by the shopping coordinator:
-Call `transfer_to_buyer_agent` with a concise store confirmation (e.g. "FastFeet confirms terms with 1-day express delivery" or "FastFeet confirms inventory status") so the buyer agent can finalize checkout or initiate WATCH mode.""",
-    tools=[search_fastfeet_catalog, negotiate_fastfeet_price, get_fastfeet_info, transfer_to_buyer_agent],
+Use search_fastfeet_catalog to check inventory and negotiate_fastfeet_price to respond to counter-offers.""",
+    tools=[search_fastfeet_catalog, negotiate_fastfeet_price, get_fastfeet_info],
 )
 
 root_agent = fastfeet_merchant
-__all__ = ["fastfeet_merchant", "get_fastfeet_info", "negotiate_fastfeet_price", "root_agent", "search_fastfeet_catalog", "transfer_to_buyer_agent"]
+__all__ = ["fastfeet_merchant", "get_fastfeet_info", "negotiate_fastfeet_price", "root_agent", "search_fastfeet_catalog"]

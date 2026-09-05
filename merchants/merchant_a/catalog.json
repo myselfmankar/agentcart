@@ -39,7 +39,7 @@
           "color": "black",
           "size": "L",
           "price": 1799,
-          "stock": 6
+          "stock": 1
         }
       ]
     },
@@ -59,7 +59,7 @@
           "color": "olive",
           "size": "32",
           "price": 2899,
-          "stock": 5
+          "stock": 0
         }
       ]
     }

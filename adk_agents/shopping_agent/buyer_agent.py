@@ -103,13 +103,53 @@ def check_order_or_watch_status(tool_context: ToolContext | None = None) -> dict
     """Checks the live status of any active or completed shopping/watch objectives."""
     from app.modules.watch.objective import objective_store
 
-    objs = objective_store.get_all_objectives()
-    if not objs:
+    target_obj = None
+    if tool_context and hasattr(tool_context, "state") and tool_context.state:
+        watching_id = tool_context.state.get("session:watching_objective_id")
+        if watching_id:
+            target_obj = objective_store.get_objective(watching_id)
+
+    if not target_obj:
+        objs = objective_store.get_all_objectives()
+        if objs:
+            completed_objs = [o for o in objs if o.status.value == "COMPLETED"]
+            if completed_objs:
+                target_obj = completed_objs[-1]
+            else:
+                target_obj = objs[-1]
+
+    if not target_obj:
         return {"status": "NO_OBJECTIVES", "message": "No active or past shopping objectives found."}
-    latest = objs[-1]
+
+    latest = target_obj
+
+    if tool_context and hasattr(tool_context, "state") and tool_context.state is not None:
+        try:
+            tool_context.state["session:watch_status"] = latest.status.value
+            if latest.purchase_result:
+                tool_context.state["session:winning_merchant"] = latest.purchase_result.get("merchant")
+                tool_context.state["session:item_purchased"] = latest.purchase_result.get("item_purchased")
+                tool_context.state["session:amount_paid_inr"] = latest.purchase_result.get("amount_paid_inr")
+        except Exception:
+            pass
+
+    is_completed = latest.status.value == "COMPLETED"
+    summary_msg = ""
+    if is_completed and latest.purchase_result:
+        m_name = latest.purchase_result.get("merchant", "the store")
+        item_name = latest.purchase_result.get("item_purchased", "item")
+        price = latest.purchase_result.get("amount_paid_inr", 0)
+        summary_msg = f"PURCHASE_COMPLETED: {m_name} restocked {item_name}. Autonomously purchased for Rs. {price:,.2f} under AP2 Intent Mandate."
+    elif latest.status.value == "WATCHING":
+        summary_msg = f"WATCHING: Actively tracking merchants for restocks or price drops. {latest.watch_reason or ''}"
+
     return {
         "status": latest.status.value,
+        "is_completed": is_completed,
+        "summary": summary_msg,
         "objective_id": latest.objective_id,
+        "intent_mandate_id": latest.intent_mandate_id,
+        "modality": latest.modality,
         "intent": latest.user_intent,
         "reason": latest.watch_reason,
         "purchase_result": latest.purchase_result,
@@ -406,14 +446,17 @@ STRICT NEGATIVE CONSTRAINTS:
 Execution Flow:
 1. When the user asks to buy or find an item:
    Call `delegate_to_shopping_coordinator` passing query, brand, category, size, color, budget, and delivery deadline.
-2. When transferred back (from shopping_coordinator or the merchant agent):
+2. When transferred back from shopping_coordinator:
    - If a winning proposal was negotiated (status: NEGOTIATION_COMPLETE):
      Call `execute_autonomous_checkout` to execute payment.
      Immediately reply to the user with the 2-sentence confirmation. DO NOT call any other tool.
    - If placed in WATCHING state (status: WATCHING):
-     Reply cleanly to the user in 2 sentences explaining that no store currently meets their price or stock requirement (mention which store is out of stock or above budget), and confirm that you have placed the request on WATCH and will automatically buy it when stock arrives or the price drops. DO NOT call checkout.
-3. If the user asks about the status of an order or watch (e.g. "Did you buy it?", "Any updates?"):
-   Call `check_order_or_watch_status` and report the current status clearly in 1-2 sentences.
+     Reply cleanly to the user in 2 sentences explaining that no store currently meets their price or stock requirement (mention which store is out of stock or above budget), and confirm that you have placed the request on WATCH under an AP2 Intent Mandate and will automatically buy it when stock arrives or the price drops. DO NOT call checkout.
+3. If the user asks about the status of an order or watch (e.g. "Did you buy it?", "Any updates?"), OR asks any follow-up question:
+   Call `check_order_or_watch_status`.
+   - If the status is COMPLETED and was purchased in the background via restock, confirm naturally in 2 sentences:
+     "ShoeKart restocked the Adidas Runfalcon 3! Since your Intent Mandate authorized it under Rs. 4,000, I completed the purchase for Rs. 3,550. Delivery is scheduled within 5 days."
+   - If still WATCHING, confirm that you are actively monitoring for restocks or price drops to execute automatically.
 4. On follow-up questions asking "Why this only?" or "Why did you choose this store?":
    Briefly explain why this store was selected over competitors using the session proposals and negotiation.
 5. If payment fails, report the natural explanation in 1-2 sentences.""",

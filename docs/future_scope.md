@@ -27,3 +27,12 @@
   4. **Federated Domain Gateways**:
      - Specialized aggregator agents (e.g., Electronics Gateway, Fashion Gateway, Logistics Gateway) that group merchant sub-clusters hierarchically.
 
+
+3. Why Orders were stuck in Created / ₹0.00 Collected:
+Order creation (create_order) was reaching the live Razorpay API, which is why orders appeared on the dashboard with status Created.
+However, execute_test_payment in app/modules/razorpay/client.py was generating a mock pay_<uuid> dictionary in memory rather than calling the Razorpay test payment gateway.
+As a result, attempts were 0, no payment was ever captured on Razorpay, and the dashboard displayed Collected Amount: ₹0.00 from 0 captured payments.
+The 3-Merchant / Single-Account Challenge:
+Platforms with multiple merchants cannot create 3 separate master accounts.
+In Razorpay, the solution is Razorpay Route (Marketplace & Split Payments).
+On standard test API keys, the Route Linked Account creation endpoint (POST /v2/accounts) returns "Route feature not enabled for the merchant".

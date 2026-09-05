@@ -19,9 +19,18 @@ from .buyer_agent import (
     shopping_coordinator,
 )
 
+from google.adk.apps.app import App, ContextCacheConfig
+
+app = App(
+    name="shopping_agent",
+    root_agent=root_agent,
+    context_cache_config=ContextCacheConfig(),
+)
+
 execute_autonomous_shopping_intent = run_autonomous_purchase
 
 __all__ = [
+    "app",
     "buyer_agent",
     "check_buyer_balance",
     "check_order_or_watch_status",

@@ -1,11 +1,15 @@
 """Simple, Minimal Merchant Stock Control & Live Watch Portal."""
 
+import logging
 import sys
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("merchant_portal")
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -83,7 +87,7 @@ def update_stock_single(req: StockSingleRequest):
             "payload": {"stock": req.stock},
         })
     except Exception as e:
-        pass
+        logger.error("Failed to emit merchant event to shopping orchestrator: %s", e)
     return {"success": True, "merchant": m.merchant_name, "sku": req.sku, "stock": req.stock}
 
 
@@ -92,6 +96,7 @@ def update_stock_batch(req: StockBatchRequest):
     m = MERCHANTS.get(req.merchant.lower())
     if not m:
         raise HTTPException(status_code=404, detail="Merchant not found")
+    
     updated = []
     for it in req.items:
         res = m.set_stock(it.sku, it.stock)
@@ -105,8 +110,13 @@ def update_stock_batch(req: StockBatchRequest):
                     "payload": {"stock": it.stock},
                 })
             except Exception as e:
-                pass
-    return {"success": True, "merchant": m.merchant_name, "updated_count": len(updated)}
+                logger.error("Failed to emit merchant event to shopping orchestrator: %s", e)
+
+    return {
+        "success": True,
+        "merchant": m.merchant_name,
+        "updated_count": len(updated),
+    }
 
 
 @app.get("/api/objectives")
@@ -316,24 +326,31 @@ def get_dashboard():
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ merchant: activeMerchantId, items: itemsToUpdate })
         });
+        if (!res.ok) {
+          const errText = await res.text();
+          alert('Update failed (HTTP ' + res.status + '): ' + errText);
+          return;
+        }
         const data = await res.json();
         if (data.success) {
           const msg = document.getElementById('update-msg');
+          msg.textContent = 'Stock updated!';
           msg.style.display = 'inline';
-          setTimeout(() => { msg.style.display = 'none'; }, 2500);
+          setTimeout(() => { msg.style.display = 'none'; }, 2000);
           await loadMerchants();
           await loadObjectives();
         } else {
-          alert('Update failed');
+          alert('Update failed: ' + (data.error || 'Unknown error'));
         }
       } catch (err) {
-        alert('Error: ' + err);
+        alert('Network or processing error: ' + err.message);
       }
     }
 
     async function loadObjectives() {
       try {
         const res = await fetch('/api/objectives');
+        if (!res.ok) return;
         const list = await res.json();
         const container = document.getElementById('objectives-list');
         if (!list || list.length === 0) {

@@ -109,16 +109,19 @@ class RazorpayMCPClient:
         currency: str = "INR",
         receipt: str | None = None,
         notes: dict[str, str] | None = None,
-        objective_id: str = "obj_default"
+        transfers: list[dict[str, Any]] | None = None,
+        objective_id: str = "obj_default",
     ) -> dict[str, Any]:
         """Creates an order via Razorpay MCP create_order tool."""
         amount_paise = round(amount_inr * 100)
-        args = {
+        args: dict[str, Any] = {
             "amount": amount_paise,
             "currency": currency,
             "receipt": receipt or "rcpt_agentic_order",
             "notes": notes or {},
         }
+        if transfers:
+            args["transfers"] = transfers
         return self.call_tool("create_order", args, objective_id=objective_id)
 
     def create_payment_link(

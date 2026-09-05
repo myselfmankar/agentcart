@@ -39,7 +39,7 @@
           "color": "navy",
           "size": "L",
           "price": 1299,
-          "stock": 8
+          "stock": 7
         }
       ]
     },
@@ -59,7 +59,7 @@
           "color": "dark-blue",
           "size": "32",
           "price": 2199,
-          "stock": 6
+          "stock": 4
         }
       ]
     }

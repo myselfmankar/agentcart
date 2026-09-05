@@ -43,6 +43,13 @@ class ShoppingObjective(BaseModel):
     watch_reason: str | None = None
     last_event: dict[str, Any] | None = None
     purchase_result: dict[str, Any] | None = None
+    intent_mandate_id: str | None = None
+    intent_mandate_jwt: str | None = None
+    intent_mandate_payload: dict[str, Any] | None = None
+    open_payment_mandate_id: str | None = None
+    open_payment_mandate_jwt: str | None = None
+    open_payment_mandate_payload: dict[str, Any] | None = None
+    modality: str = "HUMAN_NOT_PRESENT"
 
     def transition_to(self, new_status: ObjectiveStatus, reason: str | None = None) -> None:
         old_status = self.status
@@ -117,13 +124,16 @@ class ObjectiveStore:
         return list(self._cache.values())
 
     def clear(self) -> None:
-        """Clears in-memory cache and removes disk file."""
+        """Clears in-memory cache and resets disk file."""
         self._cache.clear()
-        if self.file_path.exists():
-            try:
-                self.file_path.unlink(missing_ok=True)
-            except Exception:
-                pass
+        try:
+            self.file_path.write_text("{}", encoding="utf-8")
+        except Exception:
+            if self.file_path.exists():
+                try:
+                    self.file_path.unlink(missing_ok=True)
+                except Exception:
+                    pass
 
 
 # Global objective store

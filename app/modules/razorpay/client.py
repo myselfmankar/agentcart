@@ -22,6 +22,7 @@ import razorpay
 
 from app.modules.audit.trail import audit_trail
 from app.modules.razorpay.mcp_client import razorpay_mcp_client
+from app.modules.razorpay.route import razorpay_route_manager
 
 
 class RazorpayClientAdapter:
@@ -60,10 +61,23 @@ class RazorpayClientAdapter:
         currency: str = "INR",
         receipt: str | None = None,
         notes: dict[str, str] | None = None,
+        merchant_id: str | None = None,
+        merchant_name: str | None = None,
+        transfers: list[dict[str, Any]] | None = None,
         objective_id: str = "obj_default",
     ) -> dict[str, Any]:
-        """Creates a Razorpay order in test mode."""
+        """Creates a Razorpay order in test mode with Route multi-merchant attribution."""
         receipt_id = receipt or f"rcpt_{uuid.uuid4().hex[:8]}"
+
+        target_merchant = merchant_id or (notes.get("merchant") if notes else None) or merchant_name or "urbankicks"
+        route_prep = razorpay_route_manager.prepare_order_routing(
+            merchant_id_or_name=target_merchant,
+            amount_inr=amount_inr,
+            currency=currency,
+            existing_notes=notes,
+        )
+        final_notes = route_prep["notes"]
+        final_transfers = transfers or route_prep.get("transfers")
 
         audit_trail.log_event(
             event_type="RAZORPAY_ORDER_CREATE_INITIATED",
@@ -72,6 +86,8 @@ class RazorpayClientAdapter:
                 "amount_inr": amount_inr,
                 "currency": currency,
                 "receipt": receipt_id,
+                "merchant_id": route_prep["merchant_id"],
+                "merchant_name": route_prep["merchant_name"],
                 "execution_mode": self.execution_mode,
             },
         )
@@ -83,7 +99,8 @@ class RazorpayClientAdapter:
                     amount_inr=amount_inr,
                     currency=currency,
                     receipt=receipt_id,
-                    notes=notes or {},
+                    notes=final_notes,
+                    transfers=final_transfers,
                     objective_id=objective_id,
                 )
                 audit_trail.log_event(
@@ -93,6 +110,7 @@ class RazorpayClientAdapter:
                         "order_id": order["id"],
                         "amount_inr": amount_inr,
                         "status": order.get("status", "created"),
+                        "merchant": route_prep["merchant_name"],
                     },
                 )
                 return order
@@ -117,8 +135,10 @@ class RazorpayClientAdapter:
             "receipt": receipt_id,
             "status": "created",
             "attempts": 0,
-            "notes": notes or {},
+            "notes": final_notes,
         }
+        if final_transfers:
+            order["transfers"] = final_transfers
         self._mock_orders[order_id] = order
 
         audit_trail.log_event(
@@ -146,15 +166,94 @@ class RazorpayClientAdapter:
             return self._mock_orders[order_id]
         raise ValueError(f"Order {order_id} not found")
 
+    def _execute_live_razorpay_payment(
+        self,
+        order_id: str,
+        amount_inr: float,
+        merchant_id: str | None = None,
+        merchant_name: str | None = None,
+        method: str = "card",
+    ) -> dict[str, Any]:
+        """Executes a real domestic test payment and capture against Razorpay sandbox."""
+        amount_paise = round(amount_inr * 100)
+        import requests
+
+        session = requests.Session()
+        merchant_info = razorpay_route_manager.get_merchant_info(merchant_id or merchant_name or "urbankicks")
+
+        payload = {
+            "key_id": self.key_id,
+            "order_id": order_id,
+            "amount": str(amount_paise),
+            "currency": "INR",
+            "contact": "9876543210",
+            "email": f"buyer.{merchant_info['id']}@example.com",
+            "method": method,
+            "card[number]": "4100280000001007",
+            "card[expiry_month]": "12",
+            "card[expiry_year]": "2030",
+            "card[cvv]": "123",
+            "card[name]": f"Buyer for {merchant_info['name']}",
+            "notes[merchant_id]": merchant_info["id"],
+            "notes[merchant_name]": merchant_info["name"],
+            "notes[route_target]": merchant_info["account_id"],
+        }
+        r1 = session.post(
+            "https://api.razorpay.com/v1/payments",
+            data=payload,
+            auth=(self.key_id, ""),
+            timeout=10.0,
+        )
+
+        m_action = re.search(r'action="([^"]+)"', r1.text)
+        if not m_action:
+            raise RuntimeError(f"Could not parse gateway action URL from Razorpay response: {r1.text[:200]}")
+        gateway_url = m_action.group(1)
+        inputs = dict(re.findall(r'name="([^"]+)"\s+value="([^"]*)"', r1.text))
+
+        r2 = session.post(gateway_url, data=inputs, timeout=10.0)
+
+        m_submit = re.search(r'action="([^"]+)"', r2.text)
+        m_cb = re.search(r'name="callback_url"\s+value="([^"]+)"', r2.text)
+        if not (m_submit and m_cb):
+            raise RuntimeError(f"Could not parse bank submit URL from Razorpay mock bank: {r2.text[:200]}")
+
+        submit_url = m_submit.group(1)
+        callback_url = m_cb.group(1)
+
+        session.post(
+            submit_url,
+            data={
+                "callback_url": callback_url,
+                "language_code": "en",
+                "success": "S",
+            },
+            timeout=10.0,
+        )
+
+        m_pid = re.search(r"pay_[a-zA-Z0-9]+", callback_url)
+        if not m_pid:
+            raise RuntimeError(f"Could not extract payment_id from callback: {callback_url}")
+        payment_id = m_pid.group(0)
+
+        payment = self.sdk_client.payment.fetch(payment_id)
+        if payment.get("status") == "authorized":
+            payment = self.sdk_client.payment.capture(payment_id, amount_paise)
+
+        return payment
+
     def execute_test_payment(
         self,
         order_id: str,
         amount_inr: float,
+        merchant_id: str | None = None,
+        merchant_name: str | None = None,
         method: str = "card",
         simulate_failure: bool = False,
+        force_live: bool = False,
         objective_id: str = "obj_default",
     ) -> dict[str, Any]:
-        """Executes and captures a payment against an order in test mode."""
+        """Executes and captures a payment against an order in test mode with Route settlement."""
         amount_paise = round(amount_inr * 100)
 
         audit_trail.log_event(
@@ -163,6 +262,8 @@ class RazorpayClientAdapter:
             details={
                 "order_id": order_id,
                 "amount_inr": amount_inr,
+                "merchant_id": merchant_id,
+                "merchant_name": merchant_name,
                 "method": method,
                 "simulate_failure": simulate_failure,
             },
@@ -188,7 +289,56 @@ class RazorpayClientAdapter:
                 "error_description": "Card was declined by issuing bank (test mode)",
             }
 
-        # Captured test payment
+        # Attempt authentic live Razorpay capture if connected to Razorpay Sandbox
+        is_pytest = bool(os.environ.get("PYTEST_CURRENT_TEST"))
+        should_execute_live = self.is_live_mcp and (
+            not is_pytest or force_live or (order_id.startswith("order_") and not order_id.startswith("order_mock") and len(order_id) == 20)
+        )
+
+        if should_execute_live and self.sdk_client:
+            try:
+                payment = self._execute_live_razorpay_payment(
+                    order_id=order_id,
+                    amount_inr=amount_inr,
+                    merchant_id=merchant_id,
+                    merchant_name=merchant_name,
+                    method=method,
+                )
+
+                razorpay_route_manager.record_settlement(
+                    merchant_id_or_name=merchant_id or merchant_name or "urbankicks",
+                    amount_inr=amount_inr,
+                    order_id=order_id,
+                    payment_id=payment["id"],
+                    currency="INR",
+                    status=payment.get("status", "captured"),
+                )
+
+                audit_trail.log_event(
+                    event_type="RAZORPAY_PAYMENT_CAPTURED",
+                    objective_id=objective_id,
+                    details={
+                        "payment_id": payment["id"],
+                        "order_id": order_id,
+                        "amount_inr": amount_inr,
+                        "status": payment.get("status", "captured"),
+                        "execution_mode": "LIVE_RAZORPAY_SANDBOX",
+                    },
+                )
+                return payment
+            except Exception as e:
+                logger.warning(
+                    "Live Razorpay test payment execution failed: %s. Falling back to local mock capture.",
+                    e,
+                )
+                audit_trail.log_event(
+                    event_type="RAZORPAY_PAYMENT_LIVE_FALLBACK",
+                    objective_id=objective_id,
+                    details={"error": str(e)},
+                    level="WARNING",
+                )
+
+        # Captured test payment (local simulation fallback)
         payment_id = f"pay_{uuid.uuid4().hex[:14]}"
         payment = {
             "id": payment_id,
@@ -208,6 +358,15 @@ class RazorpayClientAdapter:
             self._mock_orders[order_id]["amount_paid"] = amount_paise
             self._mock_orders[order_id]["attempts"] = 1
 
+        razorpay_route_manager.record_settlement(
+            merchant_id_or_name=merchant_id or merchant_name or "urbankicks",
+            amount_inr=amount_inr,
+            order_id=order_id,
+            payment_id=payment_id,
+            currency="INR",
+            status="mock_captured",
+        )
+
         audit_trail.log_event(
             event_type="RAZORPAY_PAYMENT_CAPTURED",
             objective_id=objective_id,
@@ -216,6 +375,7 @@ class RazorpayClientAdapter:
                 "order_id": order_id,
                 "amount_inr": amount_inr,
                 "status": "captured",
+                "execution_mode": "MOCK",
             },
         )
         return payment

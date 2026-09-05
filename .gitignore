@@ -3,6 +3,7 @@ ap2_a2a_sample_code
 .venv
 .logs
 .temp-db
+.temp-test-db
 *.egg-info
 __pycache__
 *.pyc

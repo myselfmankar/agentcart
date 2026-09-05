@@ -75,23 +75,6 @@ def get_shoekart_info() -> dict[str, Any]:
     }
 
 
-def transfer_to_buyer_agent(
-    confirmation: str,
-    tool_context: ToolContext | None = None,
-) -> dict[str, Any]:
-    """Confirms store availability or proposal and transfers control to buyer_agent."""
-    if tool_context and hasattr(tool_context, "actions") and tool_context.actions is not None:
-        try:
-            tool_context.actions.transfer_to_agent = "buyer_agent"
-        except Exception:
-            pass
-    return {
-        "status": "TRANSFERRED_TO_BUYER",
-        "merchant": "ShoeKart",
-        "confirmation": confirmation,
-    }
-
-
 shoekart_merchant = Agent(
     name="shoekart_merchant",
     model=_model,
@@ -99,10 +82,9 @@ shoekart_merchant = Agent(
     instruction="""You are the autonomous sales agent for ShoeKart.
 Your catalog offers footwear deals with 3-to-6-day delivery.
 Respond to customer and agent inquiries regarding clearance stock and discount pricing.
-When transferred to by the shopping coordinator:
-Call `transfer_to_buyer_agent` with a concise store confirmation (e.g. "ShoeKart confirms Adidas Runfalcon 3 Blue Size 10 terms" or "ShoeKart confirms item is currently out of stock") so the buyer agent can finalize checkout or initiate WATCH mode.""",
-    tools=[search_shoekart_catalog, negotiate_shoekart_price, get_shoekart_info, transfer_to_buyer_agent],
+Use search_shoekart_catalog to check inventory and negotiate_shoekart_price for clearance discounts.""",
+    tools=[search_shoekart_catalog, negotiate_shoekart_price, get_shoekart_info],
 )
 
 root_agent = shoekart_merchant
-__all__ = ["get_shoekart_info", "negotiate_shoekart_price", "root_agent", "search_shoekart_catalog", "shoekart_merchant", "transfer_to_buyer_agent"]
+__all__ = ["get_shoekart_info", "negotiate_shoekart_price", "root_agent", "search_shoekart_catalog", "shoekart_merchant"]

@@ -68,14 +68,17 @@ def query_all_merchants_catalog(
     if color:
         filters["color"] = color
 
-    res_a = merchant_a.search_catalog(query=query, filters=filters)
-    res_b = merchant_b.search_catalog(query=query, filters=filters)
-    res_c = merchant_c.search_catalog(query=query, filters=filters)
-    return {
-        "UrbanKicks": {"items": [it.model_dump() for it in res_a], "count": len(res_a), "delivery_days": 4},
-        "ShoeKart": {"items": [it.model_dump() for it in res_b], "count": len(res_b), "delivery_days": 6},
-        "FastFeet": {"items": [it.model_dump() for it in res_c], "count": len(res_c), "delivery_days": 1},
-    }
+    results = {}
+    for m in (merchant_a, merchant_b, merchant_c):
+        items = m.search_catalog(query=query, filters=filters)
+        delivery_days = m.policy.get("standard_delivery_days", 3) if hasattr(m, "policy") and isinstance(m.policy, dict) else 3
+        name = getattr(m, "merchant_name", getattr(m, "merchant_id", "merchant"))
+        results[name] = {
+            "items": [it.model_dump() for it in items],
+            "count": len(items),
+            "delivery_days": delivery_days,
+        }
+    return results
 
 
 def coordinate_merchant_proposals_and_negotiate(
@@ -102,8 +105,11 @@ def coordinate_merchant_proposals_and_negotiate(
         import time
         import uuid
         from app.modules.watch.objective import ObjectiveStatus, ShoppingObjective, objective_store
+        from app.modules.ap2.mandates import authorize_user_mandates
 
         obj_id = f"obj_{uuid.uuid4().hex[:8]}"
+        open_checkout, open_payment = authorize_user_mandates(intent)
+
         objective = ShoppingObjective(
             objective_id=obj_id,
             user_intent=intent,
@@ -111,37 +117,30 @@ def coordinate_merchant_proposals_and_negotiate(
             watch_reason=decision.reasoning or "No qualifying offers currently exist within budget/stock. Placed in WATCHING mode.",
             created_at=time.time(),
             updated_at=time.time(),
+            intent_mandate_id=open_checkout["mandate_id"],
+            intent_mandate_jwt=open_checkout["token"],
+            intent_mandate_payload=open_checkout.get("payload"),
+            open_payment_mandate_id=open_payment["mandate_id"],
+            open_payment_mandate_jwt=open_payment["token"],
+            open_payment_mandate_payload=open_payment.get("payload"),
+            modality="HUMAN_NOT_PRESENT",
         )
         objective_store.save_objective(objective)
-
-        closest_agent = "shoekart_merchant"
-        for p in decision.all_proposals:
-            if not p.is_in_stock or (p.item and (intent.get("query") or "").lower() in p.item.name.lower()):
-                m_id = (p.merchant_id or "").lower()
-                closest_agent = {
-                    "merchant_a": "urbankicks_merchant",
-                    "urbankicks": "urbankicks_merchant",
-                    "merchant_b": "shoekart_merchant",
-                    "shoekart": "shoekart_merchant",
-                    "merchant_c": "fastfeet_merchant",
-                    "fastfeet": "fastfeet_merchant",
-                }.get(m_id, "shoekart_merchant")
-                break
 
         if tool_context and hasattr(tool_context, "state") and tool_context.state is not None:
             try:
                 tool_context.state["session:watching_objective_id"] = obj_id
                 tool_context.state["session:watch_status"] = "WATCHING"
+                tool_context.state["session:intent_mandate_id"] = open_checkout["mandate_id"]
                 tool_context.state["session:watch_reason"] = decision.reasoning
-                tool_context.actions.transfer_to_agent = closest_agent
+                tool_context.actions.transfer_to_agent = "buyer_agent"
             except Exception:
                 pass
 
         return {
             "status": "WATCHING",
             "objective_id": obj_id,
-            "target_merchant_agent": closest_agent,
-            "message": f"No qualifying offer in stock. Delegating to {closest_agent} to confirm store status.",
+            "message": "No qualifying offer currently exists within budget or stock. Shopping objective placed in WATCHING state.",
             "reasoning": decision.reasoning,
             "proposals": [p.to_dict() for p in decision.all_proposals],
         }
@@ -155,21 +154,10 @@ def coordinate_merchant_proposals_and_negotiate(
     winner_price = winning.proposed_price
     delivery_days = min(winning.standard_delivery_days, winning.express_delivery_days)
 
-    merchant_agent_map = {
-        "merchant_a": "urbankicks_merchant",
-        "urbankicks": "urbankicks_merchant",
-        "merchant_b": "shoekart_merchant",
-        "shoekart": "shoekart_merchant",
-        "merchant_c": "fastfeet_merchant",
-        "fastfeet": "fastfeet_merchant",
-    }
-    winner_agent = merchant_agent_map.get(winner_merchant_id.lower(), "shoekart_merchant")
-
     summary = {
         "status": "NEGOTIATION_COMPLETE",
         "winning_merchant": winner_merchant,
         "winning_merchant_id": winner_merchant_id,
-        "winning_agent": winner_agent,
         "winning_sku": winner_sku,
         "winning_item": winner_item,
         "final_price_inr": winner_price,
@@ -191,7 +179,7 @@ def coordinate_merchant_proposals_and_negotiate(
             tool_context.state["session:ai_reasoning"] = decision.reasoning
             tool_context.state["session:proposals"] = summary["proposals"]
             tool_context.state["session:negotiation_rounds"] = decision.negotiation_rounds
-            tool_context.actions.transfer_to_agent = winner_agent
+            tool_context.actions.transfer_to_agent = "buyer_agent"
         except Exception:
             pass
 
@@ -207,7 +195,7 @@ You coordinate between the buyer representative and multiple merchant agents (Ur
 Your role is to discover active stores, solicit proposals over A2A, and conduct price/delivery comparisons and counter-negotiations.
 
 Execution:
-When delegated a shopping search from the buyer agent, call `coordinate_merchant_proposals_and_negotiate` to evaluate live merchant catalogs and negotiate discounts. Control will automatically transfer to the selected merchant agent in the graph to finalize terms.""",
+When delegated a shopping search from the buyer agent, call `coordinate_merchant_proposals_and_negotiate` to evaluate live merchant catalogs via A2A, conduct negotiations, and return control to `buyer_agent` with the winning proposal or watching state.""",
     sub_agents=[shoekart_merchant, urbankicks_merchant, fastfeet_merchant],
     tools=[
         discover_a2a_merchants,

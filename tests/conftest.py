@@ -1,14 +1,15 @@
-"""Pytest test harness and fixtures.
-
-Restores merchant state, buyer ledger, and objective store before each test to ensure test isolation across the regression suite.
-"""
-
+from pathlib import Path
 import pytest
 
 from app.merchants import merchant_a, merchant_b, merchant_c
 from app.merchants.repository import merchant_repository
 from app.modules.buyer.ledger import buyer_ledger
 from app.modules.watch.objective import objective_store
+
+# Isolate tests to a sandbox test database so running pytest never wipes live session data
+_TEST_DB = Path(".temp-test-db")
+_TEST_DB.mkdir(parents=True, exist_ok=True)
+objective_store.file_path = _TEST_DB / "test_shopping_objectives.json"
 
 
 @pytest.fixture(autouse=True)
@@ -25,5 +26,6 @@ def reset_test_state():
     # Reset buyer ledger to generous baseline
     buyer_ledger.reset(available_balance=50000.0, per_transaction_limit=50000.0)
 
-    # Clear objective store cache
+    # Clear test objective store cache
     objective_store.clear()
+

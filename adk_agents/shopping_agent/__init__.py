@@ -7,7 +7,8 @@ _ROOT = Path(__file__).resolve().parent.parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from .buyer_agent import (
+from .agent import (
+    app,
     buyer_agent,
     check_buyer_balance,
     root_agent,
@@ -16,6 +17,7 @@ from .buyer_agent import (
 )
 
 __all__ = [
+    "app",
     "buyer_agent",
     "check_buyer_balance",
     "root_agent",

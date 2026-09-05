@@ -28,10 +28,13 @@ def test_watching_state_and_event_re_evaluation():
         assert init_res["status"] == "WATCHING"
         obj_id = init_res["objective_id"]
 
-        # Verify objective is persisted as WATCHING
+        # Verify objective is persisted as WATCHING under AP2 HNP Intent Mandate
         obj = shopping_orchestrator.objective_store.get_objective(obj_id)
         assert obj is not None
         assert obj.status == ObjectiveStatus.WATCHING
+        assert obj.intent_mandate_id is not None
+        assert obj.modality == "HUMAN_NOT_PRESENT"
+        assert obj.open_payment_mandate_id is not None
 
         # Step 2: Merchant B restocks
         merchant_b.set_stock("adidas-runfalcon-3_blue_10", 4)

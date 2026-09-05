@@ -539,16 +539,15 @@ Respond with a JSON object with this exact structure:
         """A2A Entry point: Formulates an ACP commercial proposal based on merchant catalog, stock, and commercial policy."""
         self.reload_from_disk()
 
-        # In automated test suites, use fast deterministic evaluation to prevent API rate limits
-        if os.environ.get("PYTEST_CURRENT_TEST"):
-            return self._evaluate_catalog_fallback(query=query, filters=filters)
+        # In automated test suites or standard operation, use fast deterministic evaluation
+        # to prevent API rate limits and eliminate unnecessary latency.
+        # Set MERCHANT_USE_LLM=true to opt into per-merchant LLM reasoning.
+        if os.getenv("MERCHANT_USE_LLM", "false").lower() in ("1", "true", "yes") and not os.environ.get("PYTEST_CURRENT_TEST"):
+            llm_prop = self._evaluate_catalog_with_llm(query=query, filters=filters)
+            if llm_prop is not None:
+                return llm_prop
 
-        # Option A: Pure LLM Merchant Agent reasoning over entire catalog and policy
-        llm_prop = self._evaluate_catalog_with_llm(query=query, filters=filters)
-        if llm_prop is not None:
-            return llm_prop
-
-        # Deterministic fallback if LLM is unavailable or offline
+        # Fast deterministic evaluation based on real-time inventory and policy rules
         return self._evaluate_catalog_fallback(query=query, filters=filters)
 
     def negotiate(

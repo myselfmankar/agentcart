@@ -20,6 +20,7 @@ Implements the complete AI Buyer Agent pipeline with deterministic 16-step safet
 17. Buyer Ledger Debit Reconciled upon verified payment
 """
 
+import hashlib
 import uuid
 from typing import Any
 
@@ -60,8 +61,10 @@ class ShoppingAgentOrchestrator:
         simulate_payment_failure: bool = False,
         enable_watching: bool = False,
         objective_id: str | None = None,
+        open_checkout: dict[str, Any] | None = None,
+        open_payment: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Executes a bounded autonomous shopping intent."""
+        """Executes a bounded autonomous shopping intent under AP2 protocol."""
         objective_id = objective_id or f"obj_{uuid.uuid4().hex[:10]}"
         objective = ShoppingObjective(objective_id=objective_id, user_intent=intent)
         objective.transition_to(ObjectiveStatus.SEARCHING, "Initiating merchant discovery")
@@ -70,8 +73,18 @@ class ShoppingAgentOrchestrator:
         # 1. Log Intent
         audit_trail.log_event(event_type="INTENT_RECEIVED", objective_id=objective_id, details=intent)
 
-        # 2. Authorize Open Mandates (bounds max spending)
-        open_checkout, open_payment = authorize_user_mandates(intent)
+        # 2. Authorize Open Mandates (AP2 Intent Mandate & Payment Authority)
+        if open_checkout is None or open_payment is None:
+            open_checkout, open_payment = authorize_user_mandates(intent)
+
+        objective.intent_mandate_id = open_checkout.get("mandate_id")
+        objective.intent_mandate_jwt = open_checkout.get("token")
+        objective.intent_mandate_payload = open_checkout.get("payload")
+        objective.open_payment_mandate_id = open_payment.get("mandate_id")
+        objective.open_payment_mandate_jwt = open_payment.get("token")
+        objective.open_payment_mandate_payload = open_payment.get("payload")
+        objective.modality = "HUMAN_NOT_PRESENT" if enable_watching else "HUMAN_PRESENT"
+        self.objective_store.save_objective(objective)
 
         # 3. Discover, Solicit Proposals & AI Reasoning over A2A
         ai_reasoning = ""
@@ -87,19 +100,22 @@ class ShoppingAgentOrchestrator:
                 if enable_watching:
                     objective.transition_to(
                         ObjectiveStatus.WATCHING,
-                        "No qualifying merchant proposals. Placed in WATCHING state."
+                        "No qualifying merchant proposals. Stored under AP2 Intent Mandate (Human-Not-Present)."
                     )
+                    objective.modality = "HUMAN_NOT_PRESENT"
                     self.objective_store.save_objective(objective)
                     return {
                         "success": False,
                         "status": "WATCHING",
                         "objective_id": objective_id,
+                        "modality": "HUMAN_NOT_PRESENT",
+                        "intent_mandate_id": open_checkout["mandate_id"],
                         "proposals": [p.to_dict() for p in decision.all_proposals],
                         "evaluations": [p.to_dict() for p in decision.all_proposals],
                         "reasoning": decision.reasoning,
                         "open_checkout_mandate_id": open_checkout["mandate_id"],
                         "open_payment_mandate_id": open_payment["mandate_id"],
-                        "message": "No qualifying offer currently exists. Placed shopping objective in WATCHING state.",
+                        "message": "No qualifying offer currently exists. Placed shopping objective in WATCHING state under AP2 Intent Mandate.",
                     }
                 else:
                     objective.transition_to(ObjectiveStatus.FAILED, "No qualifying proposals found")
@@ -374,11 +390,15 @@ class ShoppingAgentOrchestrator:
             currency=checkout_session.currency,
             receipt=f"rcpt_{objective_id}",
             notes={"objective_id": objective_id, "merchant": merchant_name},
+            merchant_id=merchant_id,
+            merchant_name=merchant_name,
             objective_id=objective_id,
         )
         payment = razorpay_client.execute_test_payment(
             order_id=order["id"],
             amount_inr=amount,
+            merchant_id=merchant_id,
+            merchant_name=merchant_name,
             method="card",
             simulate_failure=simulate_payment_failure,
             objective_id=objective_id,
@@ -516,20 +536,67 @@ class ShoppingAgentOrchestrator:
                 watching_objs = self.objective_store.get_watching_objectives()
 
         for obj in watching_objs:
+            # Reconstruct or reuse the AP2 Open Mandates from persistent storage
+            open_checkout = None
+            open_payment = None
+            if obj.intent_mandate_id and obj.intent_mandate_jwt:
+                open_checkout = {
+                    "mandate_id": obj.intent_mandate_id,
+                    "token": obj.intent_mandate_jwt,
+                    "token_hash": hashlib.sha256(obj.intent_mandate_jwt.encode("utf-8")).hexdigest(),
+                    "payload": obj.intent_mandate_payload or {
+                        "mandate_id": obj.intent_mandate_id,
+                        "natural_language_description": obj.user_intent.get("description", "Autonomous purchase"),
+                        "max_price": float(obj.user_intent.get("max_price", 5000.0)),
+                        "currency": obj.user_intent.get("currency", "INR"),
+                        "quantity": int(obj.user_intent.get("quantity", 1)),
+                        "auto_purchase": True,
+                    },
+                    "status": "ACTIVE",
+                }
+            if obj.open_payment_mandate_id and obj.open_payment_mandate_jwt:
+                open_payment = {
+                    "mandate_id": obj.open_payment_mandate_id,
+                    "token": obj.open_payment_mandate_jwt,
+                    "token_hash": hashlib.sha256(obj.open_payment_mandate_jwt.encode("utf-8")).hexdigest(),
+                    "payload": obj.open_payment_mandate_payload or {
+                        "mandate_id": obj.open_payment_mandate_id,
+                        "max_amount": float(obj.user_intent.get("max_price", 5000.0)),
+                        "currency": obj.user_intent.get("currency", "INR"),
+                    },
+                    "status": "ACTIVE",
+                }
+
+            mandate_info = obj.intent_mandate_id or "mandate_active"
+
+            audit_trail.log_event(
+                event_type="AP2_HNP_RESTOCK_WAKEUP",
+                objective_id=obj.objective_id,
+                details={
+                    "intent_mandate_id": obj.intent_mandate_id,
+                    "event_type": event_type,
+                    "merchant_id": merchant_id,
+                    "item_id": event.get("item_id"),
+                    "modality": "HUMAN_NOT_PRESENT",
+                },
+            )
+
             obj.transition_to(
                 ObjectiveStatus.EVALUATING,
-                f"Re-evaluating objective after event {event_type} from {merchant_id}"
+                f"AP2 HNP Wakeup: Re-evaluating Intent Mandate {mandate_info} after {event_type} from {merchant_id}"
             )
             self.objective_store.save_objective(obj)
 
-            # Autonomous re-evaluation with fresh discovery
+            # Autonomous re-evaluation under existing AP2 Intent Mandate
             res = self.execute_intent(
                 intent=obj.user_intent,
                 enable_watching=False,
                 objective_id=obj.objective_id,
+                open_checkout=open_checkout,
+                open_payment=open_payment,
             )
             if res.get("success"):
-                obj.transition_to(ObjectiveStatus.COMPLETED, "Re-evaluation purchase succeeded")
+                obj.transition_to(ObjectiveStatus.COMPLETED, f"AP2 HNP purchase succeeded via Intent Mandate {mandate_info}")
                 obj.purchase_result = res
                 self.objective_store.save_objective(obj)
             else:
