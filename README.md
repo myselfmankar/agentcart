@@ -7,14 +7,17 @@
 [![Protocols: ACP | AP2 | A2A](https://img.shields.io/badge/Protocols-ACP%20%7C%20AP2%20%7C%20A2A-orange.svg)](#the-three-commerce-protocols)
 [![Demo Video](https://img.shields.io/badge/Demo%20Video-YouTube-red?logo=youtube)](https://youtu.be/Ohklz4oMt0o)
 
-> **Watch the Demo Video**: 
-[![https://youtu.be/Ohklz4oMt0o](https://youtu.be/Ohklz4oMt0o)](https://youtu.be/Ohklz4oMt0o)
+<p align="center">
+  <a href="https://youtu.be/Ohklz4oMt0o" target="_blank">
+    <img src="https://img.youtube.com/vi/Ohklz4oMt0o/hqdefault.jpg" alt="Watch the demo video" width="800" />
+  </a>
+</p>
 
 ---
 
 ## What is Razorpay Autonomous Commerce?
 
-Today, online shopping is manual, fragmented, and exhausting. A buyer must visit dozens of websites, filter through bloated catalogs, manually compare shipping times and prices, copy discount codes, and complete OTP-based checkouts for every purchase.
+Today, online shopping is manual, fragmented, and exhausting. A buyer must visit dozens of websites, filter through bloated catalogs, manually compare shipping times and prices, copy discount code[...] 
 
 **Razorpay Autonomous Commerce** turns this model upside down. 
 
@@ -34,29 +37,29 @@ From that single sentence, the system orchestrates a network of autonomous agent
 
 ## The Economic Thesis: Growing Merchant Revenue & Selling to AI Buyers
 
-> *"In the next era of commerce, consumers will not spend hours browsing 20 websites. Autonomous AI Agents will discover, evaluate, and purchase on their behalf. If a merchant is only built for human eyeballs, their business is invisible to the next trillion dollars in digital commerce."*
+> *"In the next era of commerce, consumers will not spend hours browsing 20 websites. Autonomous AI Agents will discover, evaluate, and purchase on their behalf. If a merchant is only built for hu[...]"
 
-Most agentic shopping concepts focus exclusively on the consumer chatbot experience. **Razorpay Autonomous Commerce solves the seller side**: we transform traditional merchants into first-class autonomous participants on the agentic network, turn lost demand into instant revenue, and unlock access to high-intent AI buyers.
+Most agentic shopping concepts focus exclusively on the consumer chatbot experience. **Razorpay Autonomous Commerce solves the seller side**: we transform traditional merchants into first-class au[...]
 
 ### 1. Making Merchants "Sellable" to AI Buyers
 Traditional storefronts trap products behind static HTML, banners, cookie popups, and human checkout funnels that bot-defenses reject. We make merchants directly accessible to AI agents:
 - **AgentCard Discovery (A2A Protocol):** Every store publishes a standardized machine-readable `AgentCard` describing its catalog domains, delivery SLAs, and commercial negotiation capabilities.
-- **Autonomous Seller Agents (Not Passive APIs):** Independent merchant agents (`UrbanKicks`, `ShoeKart`, `FastFeet`) actively evaluate incoming requests, calculate real-time availability, and conduct price counter-negotiations within private margin floors.
-- **Machine-Native Checkouts (ACP & AP2):** Eliminates form-filling, session timeouts, and checkout friction. AI buyers consume standardized ACP carts and sign ES256 cryptographic payment mandates for instant settlement.
+- **Autonomous Seller Agents (Not Passive APIs):** Independent merchant agents (`UrbanKicks`, `ShoeKart`, `FastFeet`) actively evaluate incoming requests, calculate real-time availability, and con[...]
+- **Machine-Native Checkouts (ACP & AP2):** Eliminates form-filling, session timeouts, and checkout friction. AI buyers consume standardized ACP carts and sign ES256 cryptographic payment mandates[...]
 
 ### 2. How the Live Demo Directly Grows Merchant Revenue
 
 | Revenue Driver | Traditional E-Commerce Reality | Razorpay Autonomous Commerce (Our Solution) | Direct Merchant Impact |
 | :--- | :--- | :--- | :--- |
-| **Out-of-Stock Recovery** | Customer hits "Out of Stock", bounces forever. 100% of marketing Customer Acquisition Cost (CAC) is wasted. | **WATCH Engine:** The buyer agent persists unsatisfied shopping intents. The second the merchant updates stock on the **Merchant Portal**, the system fires an event and auto-completes checkout. | **Zero-CAC Instant Liquidation:** Inventory is sold the very second it arrives in the warehouse. |
-| **Dynamic Margin Capture** | Fixed pricing loses the customer entirely if a competitor is Rs. 100 cheaper. | **Algorithmic Counter-Offers:** When outbid, the seller agent algorithmically negotiates down to its confidential floor price to capture high-intent buyers. | **Higher Conversion:** Closes price-sensitive transactions that would otherwise be lost to competitors. |
-| **Frictionless Capital Settlement** | Multi-vendor marketplace orders require manual batch reconciliation and delayed payouts. | **Razorpay Route & Payouts:** Autonomous split payments and direct VPA/bank payouts credit merchants deterministically, backed by an immutable ledger. | **Instant Cashflow:** Immediate verifiable payment capture directly into the merchant's account. |
+| **Out-of-Stock Recovery** | Customer hits "Out of Stock", bounces forever. 100% of marketing Customer Acquisition Cost (CAC) is wasted. | **WATCH Engine:** The buyer agent persists unsatisfied s[...]
+| **Dynamic Margin Capture** | Fixed pricing loses the customer entirely if a competitor is Rs. 100 cheaper. | **Algorithmic Counter-Offers:** When outbid, the seller agent algorithmically negotia[...]
+| **Frictionless Capital Settlement** | Multi-vendor marketplace orders require manual batch reconciliation and delayed payouts. | **Razorpay Route & Payouts:** Autonomous split payments and direc[...]
 
 ---
 
 ## System Architecture at a Glance
 
-The diagram below illustrates the high-level relationship between the User, the Autonomous Shopping Agent, the standardized commerce protocols, independent merchants, and Razorpay's financial layer.
+The diagram below illustrates the high-level relationship between the User, the Autonomous Shopping Agent, the standardized commerce protocols, independent merchants, and Razorpay's financial laye[...]
 
 ![Hero Architecture](assests/architecture.png)
 
@@ -64,9 +67,9 @@ The diagram below illustrates the high-level relationship between the User, the 
 
 Our architecture strictly adheres to three foundational open agentic commerce protocols:
 
-1. **A2A (Agent-to-Agent Protocol)**: The communication bus that enables agents to discover each other via standardized `AgentCard`s, query catalogs, and conduct commercial negotiations without human intervention.
+1. **A2A (Agent-to-Agent Protocol)**: The communication bus that enables agents to discover each other via standardized `AgentCard`s, query catalogs, and conduct commercial negotiations without hu[...]
 2. **ACP (Agentic Commerce Protocol)**: Standardizes how commercial quotes, line items, delivery timelines, and checkout sessions are formatted across diverse store backends.
-3. **AP2 (Agent Payments Protocol)**: The cryptographic security layer. It produces ES256-signed **Cart Mandates** and **Payment Mandates** that prove the user authorized the transaction and the merchant committed to the exact items and price.
+3. **AP2 (Agent Payments Protocol)**: The cryptographic security layer. It produces ES256-signed **Cart Mandates** and **Payment Mandates** that prove the user authorized the transaction and the m[...]
 
 ---
 
@@ -78,9 +81,9 @@ Here is what happens behind the scenes during a typical purchase:
 
 1. **Natural Intent**: The user gives a shopping prompt in plain English via the Google ADK Web UI or CLI.
 2. **Multi-Store Discovery**: The Shopping Coordinator searches registered merchants for qualifying products.
-3. **Proposal & Counter-Offers**: Merchants return structured quotes. If a merchant allows negotiation, the buyer agent initiates automated counter-offers to beat competitor prices within merchant policy limits.
+3. **Proposal & Counter-Offers**: Merchants return structured quotes. If a merchant allows negotiation, the buyer agent initiates automated counter-offers to beat competing prices within merchant[...]
 4. **LLM Trade-Off Selection**: The AI evaluates the trade-offs between price, delivery speed, and brand reputation to pick the overall winning deal.
-5. **Deterministic Policy Gate**: **Before any money moves**, a non-negotiable Python policy engine deterministically checks that the price is within budget, the merchant is whitelisted, and the item matches user requirements.
+5. **Deterministic Policy Gate**: **Before any money moves**, a non-negotiable Python policy engine deterministically checks that the price is within budget, the merchant is whitelisted, and the i[...]
 6. **Mandate Creation**: Merchant signs the cart mandate; the buyer validates it against AP2 constraints.
 7. **Razorpay Settlement**: Razorpay creates the order, verifies the balance in the buyer ledger, executes the payout, and decrements merchant inventory.
 8. **Minimalist Confirmation**: The buyer agent confirms the purchase to the user in 2 clear, concise sentences.
@@ -96,7 +99,7 @@ In our architecture, **strict dependency direction** isolates AI reasoning from 
 ![Dependency Direction & Safety Gate](assests/dependency_direction.png)
 
 - **The LLM is an advisor, not a banker**: The LLM compares product qualities, analyzes trade-offs, and conducts negotiations.
-- **The Policy Engine is a deterministic firewall**: It is 100% pure, deterministic code with zero LLM involvement. If an item costs Rs. 5,001 on a Rs. 5,000 budget, the Policy Engine immediately rejects it with `POLICY_REJECTED`.
+- **The Policy Engine is a deterministic firewall**: It is 100% pure, deterministic code with zero LLM involvement. If an item costs Rs. 5,001 on a Rs. 5,000 budget, the Policy Engine immediately [...]
 - **Double-Entry Buyer Ledger**: Maintains an atomic, disk-backed balance with per-transaction velocity limits.
 - **Immutable Audit Trail**: Every decision, price quote, rejection, and payment ID is permanently recorded in a structured OpenTelemetry audit log.
 
@@ -203,16 +206,16 @@ For software architects, security auditors, and engineers, each subsystem has it
 
 ## 🛠️ Broke at 2 AM: Real-World Engineering Postmortems
 
-Building an autonomous multi-agent commerce system from scratch surfaced complex, unexpected edge cases at 2 AM. Rather than hiding these failures, we documented what broke, why it broke, and how we architecturally engineered our way out of it:
+Building an autonomous multi-agent commerce system from scratch surfaced complex, unexpected edge cases at 2 AM. Rather than hiding these failures, we documented what broke, why it broke, and how[...]
 
-1. **[The Uncached Agent Transfer & The Gemini 503 Storm](BrokeAt2AM/the_uncached_transfer_and_503_storm.md)**: How swapping instructions during agent transfers re-sent prompt prefixes uncached, triggering Gemini 503 capacity spikes—and how configuring `ContextCacheConfig` on Google ADK solved it.
-2. **[Orders Stuck in `Created` & Razorpay Route](BrokeAt2AM/orders_stuck_in_created_and_razorpay_route.md)**: Why live test payments remained uncaptured with 0 attempts, and how Server-to-Server 3DS bank simulation & Virtual Route enabled authentic multi-merchant settlements.
-3. **[The Sub-Agent Trap: Why Merchants Must Be First-Class A2A Citizens](BrokeAt2AM/agents_first_class_a2a_citizens.md)**: Why nesting merchants as conversational sub-agents caused ADK visual collapse and sequential latency, and how treating them as independent A2A protocol peers restored architecture fidelity.
-4. **[The Vanishing WATCH State & The Polling Storm](BrokeAt2AM/the_vanishing_watch_state_and_polling_storm.md)**: How out-of-stock buyer intents vanished into thin air, and how connecting our Merchant Portal to an EventBus state machine unlocked Zero-CAC restock liquidation.
-5. **[Why We Refused to Let the LLM Touch Money Directly](BrokeAt2AM/why_refuse_to_let_agent_touch_money_directly.md)**: Why prompt-injected LLMs must never execute payments directly, and how a deterministic Python policy gate guarantees zero-risk financial safety.
-6. **[The Silent Restock & The AP2 Human-Not-Present (HNP) Solution](BrokeAt2AM/the_silent_restock_and_chat_desync.md)**: Why putting a notification on the merchant portal missed the point, and how AP2's Human-Not-Present (HNP) Intent Mandate + A2A event webhooks empower the Buyer Agent to autonomously detect restocks and execute purchases without human-in-the-loop churn.
-7. **[The Unexpected Token 'I' & The Windows Codec Crash](BrokeAt2AM/the_unexpected_token_i_and_codec_crash.md)**: How a decorative emoji in an in-memory background process clashed with Windows CP1252 charmap encoding, cascading through a missing logger variable into an HTTP 500 error that broke frontend JSON parsing.
-8. **[The Test Runner State Wipe & The Agent's "Amnesia"](BrokeAt2AM/the_test_runner_state_wipe_and_agent_amnesia.md)**: Why the agent falsely claimed ShoeKart was still out of stock after a completed autopay—and how un-isolated `pytest` fixture teardowns wiped live developer database state from disk.
+1. **[The Uncached Agent Transfer & The Gemini 503 Storm](BrokeAt2AM/the_uncached_transfer_and_503_storm.md)**: How swapping instructions during agent transfers re-sent prompt prefixes uncached, [...]
+2. **[Orders Stuck in `Created` & Razorpay Route](BrokeAt2AM/orders_stuck_in_created_and_razorpay_route.md)**: Why live test payments remained uncaptured with 0 attempts, and how Server-to-Server[...]
+3. **[The Sub-Agent Trap: Why Merchants Must Be First-Class A2A Citizens](BrokeAt2AM/agents_first_class_a2a_citizens.md)**: Why nesting merchants as conversational sub-agents caused ADK visual co[...]
+4. **[The Vanishing WATCH State & The Polling Storm](BrokeAt2AM/the_vanishing_watch_state_and_polling_storm.md)**: How out-of-stock buyer intents vanished into thin air, and how connecting our Me[...]
+5. **[Why We Refused to Let the LLM Touch Money Directly](BrokeAt2AM/why_refuse_to_let_agent_touch_money_directly.md)**: Why prompt-injected LLMs must never execute payments directly, and how a d[...]
+6. **[The Silent Restock & The AP2 Human-Not-Present (HNP) Solution](BrokeAt2AM/the_silent_restock_and_chat_desync.md)**: Why putting a notification on the merchant portal missed the point, and h[...]
+7. **[The Unexpected Token 'I' & The Windows Codec Crash](BrokeAt2AM/the_unexpected_token_i_and_codec_crash.md)**: How a decorative emoji in an in-memory background process clashed with Windows C[...]
+8. **[The Test Runner State Wipe & The Agent's "Amnesia"](BrokeAt2AM/the_test_runner_state_wipe_and_agent_amnesia.md)**: Why the agent falsely claimed ShoeKart was still out of stock after a comp[...]
 
 ---
 
