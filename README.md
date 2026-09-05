@@ -204,20 +204,6 @@ For software architects, security auditors, and engineers, each subsystem has it
 
 ---
 
-## 🛠️ Broke at 2 AM: Real-World Engineering Postmortems
-
-Building an autonomous multi-agent commerce system from scratch surfaced complex, unexpected edge cases at 2 AM. Rather than hiding these failures, we documented what broke, why it broke, and how[...]
-
-1. **[The Uncached Agent Transfer & The Gemini 503 Storm](BrokeAt2AM/the_uncached_transfer_and_503_storm.md)**: How swapping instructions during agent transfers re-sent prompt prefixes uncached, [...]
-2. **[Orders Stuck in `Created` & Razorpay Route](BrokeAt2AM/orders_stuck_in_created_and_razorpay_route.md)**: Why live test payments remained uncaptured with 0 attempts, and how Server-to-Server[...]
-3. **[The Sub-Agent Trap: Why Merchants Must Be First-Class A2A Citizens](BrokeAt2AM/agents_first_class_a2a_citizens.md)**: Why nesting merchants as conversational sub-agents caused ADK visual co[...]
-4. **[The Vanishing WATCH State & The Polling Storm](BrokeAt2AM/the_vanishing_watch_state_and_polling_storm.md)**: How out-of-stock buyer intents vanished into thin air, and how connecting our Me[...]
-5. **[Why We Refused to Let the LLM Touch Money Directly](BrokeAt2AM/why_refuse_to_let_agent_touch_money_directly.md)**: Why prompt-injected LLMs must never execute payments directly, and how a d[...]
-6. **[The Silent Restock & The AP2 Human-Not-Present (HNP) Solution](BrokeAt2AM/the_silent_restock_and_chat_desync.md)**: Why putting a notification on the merchant portal missed the point, and h[...]
-7. **[The Unexpected Token 'I' & The Windows Codec Crash](BrokeAt2AM/the_unexpected_token_i_and_codec_crash.md)**: How a decorative emoji in an in-memory background process clashed with Windows C[...]
-8. **[The Test Runner State Wipe & The Agent's "Amnesia"](BrokeAt2AM/the_test_runner_state_wipe_and_agent_amnesia.md)**: Why the agent falsely claimed ShoeKart was still out of stock after a comp[...]
-
----
 
 ## License & Acknowledgments
 
