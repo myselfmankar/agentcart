@@ -5,7 +5,9 @@
 [![Google ADK](https://img.shields.io/badge/Google-ADK%20Framework-green.svg)](https://github.com/google/agent-development-kit)
 [![Razorpay](https://img.shields.io/badge/Razorpay-blue.svg)](https://razorpay.com)
 [![Protocols: ACP | AP2 | A2A](https://img.shields.io/badge/Protocols-ACP%20%7C%20AP2%20%7C%20A2A-orange.svg)](#the-three-commerce-protocols)
+[![Demo Video](https://img.shields.io/badge/Demo%20Video-YouTube-red?logo=youtube)](https://youtu.be/Ohklz4oMt0o)
 
+> 📺 **Watch the Demo Video**: [https://youtu.be/Ohklz4oMt0o](https://youtu.be/Ohklz4oMt0o)
 
 ---
 
