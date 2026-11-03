@@ -15,6 +15,8 @@
 
 ---
 
+> **Prototype / demo scope:** AgentCart is a fresher-built project demonstrating agentic commerce concepts, not a production payment platform. Local mock payments are simulations and do not move real money. The consumed-mandate registry, WATCH event bus, webhook idempotency state, and audit-chain verification are process-local; they are not durable or distributed guarantees. The audit log is hash-chained, not tamper-proof. Use Razorpay Test Mode credentials for sandbox experiments, keep secrets out of source control, and do not use this project for live customer payments.
+
 ## What is Razorpay Autonomous Commerce?
 
 Today, online shopping is manual, fragmented, and exhausting. A buyer must visit dozens of websites, filter through bloated catalogs, manually compare shipping times and prices, copy discount code[...] 
@@ -28,9 +30,9 @@ From that single sentence, the system orchestrates a network of autonomous agent
 1. **Discovers registered Merchant Agents** representing independent storefronts (`UrbanKicks`, `ShoeKart`, `FastFeet`).
 2. **Evaluates real-time catalogs and stock** across all merchants over the Agent-to-Agent (A2A) protocol.
 3. **Conducts dynamic counter-negotiation** to beat competing offers while respecting each store's margin floor.
-4. **Enforces a Deterministic Financial Policy Gate**—guaranteeing that AI never bypasses user budget or security constraints.
+4. **Enforces a Deterministic Financial Policy Gate**—checking configured budget and merchant constraints before payment execution.
 5. **Issues Cryptographic Cart Mandates (AP2)** that mathematically prove the price, items, and merchant identity cannot be altered in transit.
-6. **Executes live financial settlement via Razorpay Test Mode**—generating orders, verifiable payouts, and immutable payment receipts.
+6. **Runs payment flows through Razorpay Test Mode or a local mock**—generating test orders and signed payment receipts.
 7. **Monitors Out-of-Stock / Over-Budget items (WATCH Engine)**—automatically completing checkout the moment a price drop or restock occurs.
 
 ---
@@ -144,8 +146,8 @@ The system includes three distinct, pre-calibrated merchant agents simulating re
 
 ```bash
 # Clone the repository
-git clone https://github.com/myselfmankar/razorpay_buidathon.git
-cd razorpay_buidathon
+git clone https://github.com/myselfmankar/agentcart.git
+cd agentcart
 
 # Install dependencies with uv
 uv sync
@@ -178,7 +180,7 @@ Open your browser at `http://127.0.0.1:8000`:
 The test suite thoroughly validates A2A discovery, ACP checkouts, AP2 cryptographic signatures, deterministic policy gates, and Razorpay settlements:
 
 ```bash
-# Run all 48 test suites
+# Run the test suite
 uv run pytest -v
 
 # Run linter checks
