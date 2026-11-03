@@ -121,7 +121,8 @@ class RazorpayClientAdapter:
                     details={"error": str(e)},
                     level="ERROR",
                 )
-                # Fallback to local mock if remote MCP fails
+                # Never report a local mock order as a successful live Razorpay order.
+                raise RuntimeError("Razorpay order creation failed; refusing mock fallback in live mode") from e
 
         # Mock order generation for test mode
         order_id = f"order_{uuid.uuid4().hex[:14]}"
@@ -327,16 +328,14 @@ class RazorpayClientAdapter:
                 )
                 return payment
             except Exception as e:
-                logger.warning(
-                    "Live Razorpay test payment execution failed: %s. Falling back to local mock capture.",
-                    e,
-                )
+                logger.error("Live Razorpay test payment execution failed: %s", e)
                 audit_trail.log_event(
-                    event_type="RAZORPAY_PAYMENT_LIVE_FALLBACK",
+                    event_type="RAZORPAY_PAYMENT_LIVE_ERROR",
                     objective_id=objective_id,
                     details={"error": str(e)},
-                    level="WARNING",
+                    level="ERROR",
                 )
+                raise RuntimeError("Razorpay payment failed; refusing mock capture in live mode") from e
 
         # Captured test payment (local simulation fallback)
         payment_id = f"pay_{uuid.uuid4().hex[:14]}"
