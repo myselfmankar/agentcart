@@ -9,6 +9,7 @@ Deterministically verifies AP2 mandates, hash bindings, and budget bounds:
 import hashlib
 import json
 import time
+import threading
 from typing import Any
 
 from jwcrypto import jwt
@@ -36,13 +37,26 @@ class DeterministicAP2Verifier:
 
     def __init__(self):
         self._consumed_mandates = set()
+        self._consumed_lock = threading.Lock()
 
     def mark_mandate_consumed(self, mandate_id: str) -> None:
         """Marks a closed mandate as consumed to prevent replay attacks."""
-        self._consumed_mandates.add(mandate_id)
+        with self._consumed_lock:
+            self._consumed_mandates.add(mandate_id)
+
+    def consume_mandate(self, mandate_id: str) -> bool:
+        """Atomically claim a mandate for one payment attempt."""
+        if not mandate_id:
+            return False
+        with self._consumed_lock:
+            if mandate_id in self._consumed_mandates:
+                return False
+            self._consumed_mandates.add(mandate_id)
+            return True
 
     def is_mandate_consumed(self, mandate_id: str) -> bool:
-        return mandate_id in self._consumed_mandates
+        with self._consumed_lock:
+            return mandate_id in self._consumed_mandates
 
     def verify_open_mandate(self, mandate_token: str) -> VerificationResult:
         """Verifies root signature and expiry in an Open Mandate."""
@@ -150,6 +164,7 @@ class DeterministicAP2Verifier:
         expected_amount: float,
         expected_payee: str,
         expected_checkout_hash: str,
+        expected_payment_method: str = "razorpay",
     ) -> VerificationResult:
         """Verifies closed payment mandate conforms to open limits and checkout."""
         agent_key = get_agent_key()
@@ -165,13 +180,26 @@ class DeterministicAP2Verifier:
                 message=f"Failed to verify Closed Payment Mandate: {e}",
             )
 
+        now = int(time.time())
+        if not claims.get("mandate_id") or int(claims.get("exp", 0)) <= now:
+            return VerificationResult(allowed=False, code="CLOSED_PAYMENT_MANDATE_EXPIRED", stage="closed_payment", message="Closed Payment Mandate is missing an ID or has expired")
+        if self.is_mandate_consumed(claims["mandate_id"]):
+            return VerificationResult(allowed=False, code="CLOSED_PAYMENT_MANDATE_REPLAYED", stage="closed_payment", message="Closed Payment Mandate has already been consumed")
+        if claims.get("open_payment_mandate_id") != open_payment_claims.get("mandate_id"):
+            return VerificationResult(allowed=False, code="OPEN_PAYMENT_MANDATE_MISMATCH", stage="closed_payment", message="Closed Payment Mandate does not reference the supplied Open Payment Mandate")
+        if int(open_payment_claims.get("exp", 0)) <= now:
+            return VerificationResult(allowed=False, code="OPEN_PAYMENT_MANDATE_EXPIRED", stage="closed_payment", message="Open Payment Mandate has expired")
         if claims.get("checkout_hash") != expected_checkout_hash:
-            return VerificationResult(
-                allowed=False,
-                code="CHECKOUT_HASH_MISMATCH",
-                stage="closed_payment",
-                message="Closed Payment Mandate not bound to current checkout session",
-            )
+            return VerificationResult(allowed=False, code="CHECKOUT_HASH_MISMATCH", stage="closed_payment", message="Closed Payment Mandate not bound to current checkout session")
+        if claims.get("payee") != expected_payee:
+            return VerificationResult(allowed=False, code="PAYEE_MISMATCH", stage="closed_payment", message="Closed Payment Mandate payee does not match the expected merchant")
+        if claims.get("currency") != open_payment_claims.get("currency", "INR"):
+            return VerificationResult(allowed=False, code="CURRENCY_MISMATCH", stage="closed_payment", message="Closed Payment Mandate currency does not match the Open Payment Mandate")
+        allowed_payees = open_payment_claims.get("allowed_payees")
+        if allowed_payees is not None and expected_payee not in allowed_payees:
+            return VerificationResult(allowed=False, code="PAYEE_NOT_ALLOWED", stage="closed_payment", message="Expected merchant is not authorized by the Open Payment Mandate")
+        if claims.get("payment_method") != expected_payment_method or expected_payment_method not in open_payment_claims.get("allowed_payment_methods", ["razorpay"]):
+            return VerificationResult(allowed=False, code="PAYMENT_METHOD_NOT_ALLOWED", stage="closed_payment", message="Payment method is not authorized by the Open Payment Mandate")
 
         mandate_amount = float(claims.get("amount", 0.0))
         max_authorized = float(open_payment_claims.get("max_amount", 0.0))

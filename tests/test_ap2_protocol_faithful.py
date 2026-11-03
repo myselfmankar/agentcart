@@ -126,11 +126,37 @@ def test_invariant_closed_mandate_bound_to_checkout_hash():
 
 
 def test_invariant_closed_mandate_replay_prevention():
-    """Verify that a consumed closed mandate cannot be reused for another payment."""
+    """A mandate can be atomically claimed once and rejected on subsequent use."""
     verifier = deterministic_verifier
-    mandate_id = f"closed_chk_replay_{time.time()}"
-    verifier.mark_mandate_consumed(mandate_id)
-    assert mandate_id in verifier._consumed_mandates
+    mandate_id = f"closed_pay_replay_{time.time()}"
+    assert verifier.consume_mandate(mandate_id) is True
+    assert verifier.consume_mandate(mandate_id) is False
+    assert verifier.is_mandate_consumed(mandate_id) is True
+
+
+def test_invariant_payment_mandate_rejects_wrong_payee():
+    """A validly signed mandate must still authorize the requested merchant."""
+    _open_chk, open_pay = authorize_user_mandates({
+        "description": "Payee binding test",
+        "max_price": 5000.0,
+    })
+    checkout_hash = "c" * 64
+    closed_pay = create_closed_payment_mandate(
+        open_payment_mandate_id=open_pay["mandate_id"],
+        checkout_hash=checkout_hash,
+        amount=4000.0,
+        currency="INR",
+        payee="FastFeet",
+    )
+    result = deterministic_verifier.verify_payment_authorization(
+        closed_payment_token=closed_pay["token"],
+        open_payment_claims=open_pay["payload"],
+        expected_amount=4000.0,
+        expected_payee="UrbanKicks",
+        expected_checkout_hash=checkout_hash,
+    )
+    assert result.allowed is False
+    assert result.code == "PAYEE_MISMATCH"
 
 
 def test_invariant_watching_re_evaluation_creates_new_checkout_and_mandates():

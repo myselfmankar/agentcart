@@ -10,6 +10,7 @@ import json
 import logging
 import os
 import time
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +31,7 @@ class AuditTrail:
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
         self.events: list[dict[str, Any]] = []
         self.last_hash: str = "0" * 64
+        self._lock = threading.RLock()
 
     def log_event(
         self,
@@ -47,6 +49,10 @@ class AuditTrail:
             details: Contextual payload (safe from secrets).
             level: INFO, WARNING, ERROR.
         """
+        with self._lock:
+            return self._log_event_locked(event_type, objective_id, details, level)
+
+    def _log_event_locked(self, event_type: str, objective_id: str, details: dict[str, Any], level: str) -> dict[str, Any]:
         # Sanitize to never leak keys or credentials
         sanitized = self._sanitize(details)
         t_now = time.time()
@@ -86,36 +92,40 @@ class AuditTrail:
 
     def get_events(self) -> list[dict[str, Any]]:
         """Retrieve all recorded in-memory events."""
-        return list(self.events)
+        with self._lock:
+            return list(self.events)
 
     def get_events_for_objective(self, objective_id: str) -> list[dict[str, Any]]:
         """Retrieve all audit events for a given shopping objective."""
-        return [e for e in self.events if e.get("objective_id") == objective_id]
+        with self._lock:
+            return [e for e in self.events if e.get("objective_id") == objective_id]
 
     def verify_integrity(self) -> bool:
         """Verifies cryptographic SHA-256 hash chaining of all recorded events."""
-        prev = "0" * 64
-        for event in self.events:
-            payload = json.dumps(
-                {
-                    "timestamp": event["timestamp"],
-                    "objective_id": event["objective_id"],
-                    "event_type": event["event_type"],
-                    "details": event["details"],
-                },
-                sort_keys=True,
-                default=str,
-            )
-            expected_hash = hashlib.sha256(f"{prev}:{payload}".encode()).hexdigest()
-            if event.get("event_hash") != expected_hash or event.get("prev_hash") != prev:
-                return False
-            prev = expected_hash
-        return True
+        with self._lock:
+            prev = "0" * 64
+            for event in self.events:
+                payload = json.dumps(
+                    {
+                        "timestamp": event["timestamp"],
+                        "objective_id": event["objective_id"],
+                        "event_type": event["event_type"],
+                        "details": event["details"],
+                    },
+                    sort_keys=True,
+                    default=str,
+                )
+                expected_hash = hashlib.sha256(f"{prev}:{payload}".encode()).hexdigest()
+                if event.get("event_hash") != expected_hash or event.get("prev_hash") != prev:
+                    return False
+                prev = expected_hash
+            return True
 
     def clear(self) -> None:
         """Clears in-memory events and resets cryptographic hash root."""
-        self.events.clear()
-        self.last_hash = "0" * 64
+        with self._lock:
+            self.events.clear()
+            self.last_hash = "0" * 64
 
     @staticmethod
     def _sanitize(data: Any) -> Any:
