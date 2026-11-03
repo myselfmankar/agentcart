@@ -384,6 +384,20 @@ class ShoppingAgentOrchestrator:
                 "money_moved_inr": 0.0,
             }
 
+        # Claim the one-shot authorization before any external payment call.
+        # Failed or ambiguous attempts require a newly issued mandate to prevent replay.
+        if not deterministic_verifier.consume_mandate(closed_payment["mandate_id"]):
+            objective.transition_to(ObjectiveStatus.FAILED, "Closed payment mandate was already consumed")
+            self.objective_store.save_objective(objective)
+            return {
+                "success": False,
+                "status": "PAYMENT_AUTHORIZATION_FAILED",
+                "code": "CLOSED_PAYMENT_MANDATE_REPLAYED",
+                "objective_id": objective_id,
+                "message": "Payment authorization has already been used.",
+                "money_moved_inr": 0.0,
+            }
+
         # 16. Razorpay Rail Execution (Test Mode)
         order = razorpay_client.create_order(
             amount_inr=amount,
