@@ -1,4 +1,6 @@
 # Razorpay Autonomous Commerce
+
+[Project landing page](index.html) · [GitHub repository](https://github.com/myselfmankar/agentcart) · [Watch demo](https://youtu.be/Ohklz4oMt0o)
 ### *Autonomous Multi-Agent E-Commerce, Intelligent Negotiation & Deterministic Financial Settlement*
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
